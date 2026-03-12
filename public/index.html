@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forge Intent Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .gradient-bg {
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%);
+    }
+    .card-gradient {
+      background: linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+    }
+  </style>
+</head>
+<body class="gradient-bg min-h-screen text-white">
+  <div id="app" class="container mx-auto px-4 py-8 max-w-4xl">
+    <!-- Header -->
+    <header class="text-center mb-12">
+      <h1 class="text-4xl font-bold mb-2">Forge Intent Portal</h1>
+      <p class="text-indigo-200">AI-Powered Root Cause Discovery</p>
+    </header>
+
+    <!-- Main Content -->
+    <main id="main-content">
+      <!-- Landing View -->
+      <div id="landing-view" class="space-y-8">
+        <div class="card-gradient backdrop-blur-sm rounded-2xl p-8 border border-white/10">
+          <h2 class="text-2xl font-semibold mb-4">Start a New Interview</h2>
+          <form id="start-form" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-indigo-200 mb-1">Project ID</label>
+              <input type="text" id="projectId" required
+                class="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                placeholder="e.g., forge-phoenix-ux">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-indigo-200 mb-1">Your Role/Description</label>
+              <input type="text" id="respondentDescription" required
+                class="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                placeholder="e.g., Senior Developer, Product Manager">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-indigo-200 mb-1">Domain Activity</label>
+              <input type="text" id="domainActivity" required
+                class="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                placeholder="e.g., debugging production issues, onboarding new team members">
+            </div>
+            <button type="submit"
+              class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 rounded-lg font-semibold transition-colors">
+              Start Interview
+            </button>
+          </form>
+        </div>
+
+        <div class="card-gradient backdrop-blur-sm rounded-2xl p-8 border border-white/10">
+          <h2 class="text-2xl font-semibold mb-4">Resume Session</h2>
+          <form id="resume-form" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-indigo-200 mb-1">Session ID</label>
+              <input type="text" id="resumeSessionId" required
+                class="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                placeholder="e.g., sess-abc12345">
+            </div>
+            <button type="submit"
+              class="w-full py-3 bg-purple-600 hover:bg-purple-500 rounded-lg font-semibold transition-colors">
+              Resume Interview
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Interview View (hidden initially) -->
+      <div id="interview-view" class="hidden space-y-6">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="text-2xl font-semibold">Interview Session</h2>
+            <p class="text-indigo-200" id="session-info"></p>
+          </div>
+          <div class="text-right">
+            <div class="text-sm text-indigo-200">Round</div>
+            <div class="text-3xl font-bold" id="round-number">1</div>
+          </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="w-full bg-white/10 rounded-full h-2">
+          <div id="progress-bar" class="bg-indigo-500 h-2 rounded-full transition-all" style="width: 0%"></div>
+        </div>
+
+        <!-- Posteriors Display -->
+        <div id="posteriors-display" class="card-gradient backdrop-blur-sm rounded-xl p-4 border border-white/10">
+          <h3 class="text-sm font-medium text-indigo-200 mb-2">Hypothesis Confidence</h3>
+          <div id="posteriors-bars" class="space-y-2"></div>
+        </div>
+
+        <!-- Questions -->
+        <div id="questions-container" class="space-y-4"></div>
+
+        <!-- Submit Button -->
+        <button id="submit-responses"
+          class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+          Submit Responses
+        </button>
+      </div>
+
+      <!-- Convergence View (hidden initially) -->
+      <div id="convergence-view" class="hidden space-y-6">
+        <div class="text-center py-8">
+          <div class="text-6xl mb-4">🎯</div>
+          <h2 class="text-3xl font-bold mb-2">Root Cause Identified!</h2>
+          <p class="text-indigo-200" id="convergence-hypothesis"></p>
+        </div>
+
+        <div class="card-gradient backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+          <h3 class="text-xl font-semibold mb-4">Confidence</h3>
+          <div class="text-4xl font-bold text-indigo-400" id="convergence-confidence"></div>
+        </div>
+
+        <div id="report-container" class="card-gradient backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+          <h3 class="text-xl font-semibold mb-4">Recommendations</h3>
+          <div id="recommendations-list" class="space-y-3"></div>
+        </div>
+
+        <button id="new-session"
+          class="w-full py-3 bg-purple-600 hover:bg-purple-500 rounded-lg font-semibold transition-colors">
+          Start New Interview
+        </button>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // Configuration
+    const API_BASE = window.location.hostname === 'localhost'
+      ? 'http://localhost:3001/api'
+      : 'https://forge-intent-api.arcfoundry.ai/api'; // Production API
+
+    let currentSession = null;
+    let currentQuestions = [];
+
+    // DOM Elements
+    const landingView = document.getElementById('landing-view');
+    const interviewView = document.getElementById('interview-view');
+    const convergenceView = document.getElementById('convergence-view');
+    const startForm = document.getElementById('start-form');
+    const resumeForm = document.getElementById('resume-form');
+    const questionsContainer = document.getElementById('questions-container');
+    const submitBtn = document.getElementById('submit-responses');
+    const newSessionBtn = document.getElementById('new-session');
+
+    // Start new session
+    startForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const projectId = document.getElementById('projectId').value;
+      const respondentDescription = document.getElementById('respondentDescription').value;
+      const domainActivity = document.getElementById('domainActivity').value;
+
+      try {
+        const response = await fetch(`${API_BASE}/sessions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ projectId, respondentDescription, domainActivity }),
+        });
+        const data = await response.json();
+        currentSession = { id: data.sessionId, projectId, respondentDescription, domainActivity };
+        await loadQuestions();
+        showInterviewView();
+      } catch (error) {
+        alert('Failed to start session: ' + error.message);
+      }
+    });
+
+    // Resume session
+    resumeForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const sessionId = document.getElementById('resumeSessionId').value;
+
+      try {
+        const response = await fetch(`${API_BASE}/sessions/${sessionId}`);
+        if (!response.ok) throw new Error('Session not found');
+        const session = await response.json();
+        currentSession = { id: session.id, ...session };
+
+        if (session.state === 'CONVERGENCE_REACHED') {
+          await showConvergenceView();
+        } else {
+          await loadQuestions();
+          showInterviewView();
+        }
+      } catch (error) {
+        alert('Failed to resume session: ' + error.message);
+      }
+    });
+
+    // Submit responses
+    submitBtn.addEventListener('click', async () => {
+      const responses = [];
+      currentQuestions.forEach((q, idx) => {
+        const textarea = document.getElementById(`response-${idx}`);
+        if (textarea && textarea.value.trim()) {
+          responses.push({ questionId: q.questionId, response: textarea.value.trim() });
+        }
+      });
+
+      if (responses.length === 0) {
+        alert('Please answer at least one question');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Processing...';
+
+      try {
+        const response = await fetch(`${API_BASE}/sessions/${currentSession.id}/turn`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ responses }),
+        });
+        const data = await response.json();
+
+        updatePosteriors(data.bayesian.posteriors);
+
+        if (data.bayesian.convergenceReached) {
+          await showConvergenceView();
+        } else if (data.nextQuestions) {
+          currentQuestions = data.nextQuestions;
+          renderQuestions();
+          document.getElementById('round-number').textContent =
+            parseInt(document.getElementById('round-number').textContent) + 1;
+          updateProgress();
+        } else {
+          // Max rounds reached
+          await showConvergenceView();
+        }
+      } catch (error) {
+        alert('Failed to submit responses: ' + error.message);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Responses';
+      }
+    });
+
+    // New session
+    newSessionBtn.addEventListener('click', () => {
+      currentSession = null;
+      currentQuestions = [];
+      landingView.classList.remove('hidden');
+      interviewView.classList.add('hidden');
+      convergenceView.classList.add('hidden');
+      startForm.reset();
+      resumeForm.reset();
+    });
+
+    // Helper functions
+    async function loadQuestions() {
+      const response = await fetch(`${API_BASE}/sessions/${currentSession.id}/questions`);
+      const data = await response.json();
+      currentQuestions = data.questions;
+      document.getElementById('round-number').textContent = data.roundNumber;
+      renderQuestions();
+    }
+
+    function renderQuestions() {
+      questionsContainer.innerHTML = currentQuestions.map((q, idx) => `
+        <div class="card-gradient backdrop-blur-sm rounded-xl p-6 border border-white/10">
+          <label class="block text-lg font-medium mb-3">${q.questionText}</label>
+          <textarea id="response-${idx}" rows="4"
+            class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+            placeholder="Share your experience...">${q.response || ''}</textarea>
+        </div>
+      `).join('');
+    }
+
+    function updatePosteriors(posteriors) {
+      const container = document.getElementById('posteriors-bars');
+      const sorted = Object.entries(posteriors).sort((a, b) => b[1] - a[1]);
+
+      container.innerHTML = sorted.slice(0, 3).map(([hyp, value]) => `
+        <div class="flex items-center gap-3">
+          <div class="w-32 text-sm truncate">${formatHypothesis(hyp)}</div>
+          <div class="flex-1 bg-white/10 rounded-full h-3">
+            <div class="bg-indigo-500 h-3 rounded-full transition-all" style="width: ${value * 100}%"></div>
+          </div>
+          <div class="w-12 text-sm text-right">${Math.round(value * 100)}%</div>
+        </div>
+      `).join('');
+    }
+
+    function formatHypothesis(hyp) {
+      return hyp.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+
+    function updateProgress() {
+      const round = parseInt(document.getElementById('round-number').textContent);
+      const progress = Math.min((round / 3) * 100, 100);
+      document.getElementById('progress-bar').style.width = `${progress}%`;
+    }
+
+    function showInterviewView() {
+      landingView.classList.add('hidden');
+      interviewView.classList.remove('hidden');
+      convergenceView.classList.add('hidden');
+      document.getElementById('session-info').textContent = `Session: ${currentSession.id}`;
+      updateProgress();
+    }
+
+    async function showConvergenceView() {
+      landingView.classList.add('hidden');
+      interviewView.classList.add('hidden');
+      convergenceView.classList.remove('hidden');
+
+      // Load session data
+      const sessionRes = await fetch(`${API_BASE}/sessions/${currentSession.id}`);
+      const session = await sessionRes.json();
+
+      document.getElementById('convergence-hypothesis').textContent =
+        formatHypothesis(session.dominantHypothesis || 'Unknown');
+      document.getElementById('convergence-confidence').textContent =
+        `${Math.round((session.dominantPosterior || 0) * 100)}%`;
+
+      // Generate report
+      try {
+        const reportRes = await fetch(`${API_BASE}/sessions/${currentSession.id}/report`, {
+          method: 'POST',
+        });
+        const report = await reportRes.json();
+
+        const recList = document.getElementById('recommendations-list');
+        recList.innerHTML = (report.recommendations || []).map(rec => `
+          <div class="p-3 bg-white/5 rounded-lg">
+            <div class="font-medium">${rec.title}</div>
+            <div class="text-sm text-indigo-200">${rec.description}</div>
+            <div class="text-xs text-indigo-300 mt-1">${rec.category} • ${rec.priority} priority</div>
+          </div>
+        `).join('');
+      } catch (error) {
+        console.error('Failed to generate report:', error);
+      }
+    }
+  </script>
+</body>
+</html>
