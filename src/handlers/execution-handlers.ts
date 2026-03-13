@@ -18,7 +18,9 @@ import type {
   RunTurnInput,
 } from '../types.js';
 
-// CDM Question Templates (fallback if S3 fetch fails)
+const MAX_ROUNDS = 7; // Maximum interview rounds before forced termination
+
+// CDM Question Templates (Phases 1-7)
 const DEFAULT_QUESTIONS: Record<number, string[]> = {
   1: [
     'Walk me through the last time you {domainActivity}.',
@@ -34,6 +36,26 @@ const DEFAULT_QUESTIONS: Record<number, string[]> = {
     'If you could change one thing about this experience, what would it be?',
     'What would have helped you succeed faster?',
     'How often does this kind of friction happen?',
+  ],
+  4: [
+    'Looking back at what you described, what was the single biggest obstacle?',
+    'Were there any workarounds you discovered that helped?',
+    'Who else on your team experiences this same issue?',
+  ],
+  5: [
+    'If this issue were completely solved tomorrow, what would change for you?',
+    'What have you already tried that didn\'t work?',
+    'Is there a specific moment where things tend to break down?',
+  ],
+  6: [
+    'How does this problem affect your broader goals or deadlines?',
+    'Have you seen this handled better elsewhere (other tools, teams, companies)?',
+    'What would you need to see to believe this was truly fixed?',
+  ],
+  7: [
+    'In one sentence, what is the core problem you\'re facing?',
+    'What would success look like for you?',
+    'Is there anything else we haven\'t covered that feels important?',
   ],
 };
 
@@ -134,9 +156,15 @@ export async function runTurn(
 
   // Generate next round questions
   const nextRound = updatedSession.currentRound + 1;
-  if (nextRound > 3) {
-    // Max rounds reached without convergence
-    updatedSession.state = 'WAITING_FOR_INPUT';
+
+  // Max rounds reached - terminate with best hypothesis
+  if (nextRound > MAX_ROUNDS) {
+    updatedSession.state = 'CONVERGENCE_REACHED';
+    updatedSession.metadata = {
+      ...updatedSession.metadata,
+      terminationReason: 'max_rounds_reached',
+      roundsCompleted: updatedSession.currentRound,
+    };
     await s3Client.saveSession(updatedSession);
     return { bayesian, nextQuestions: null };
   }
@@ -191,12 +219,76 @@ export async function advanceRound(
 // Internal Helpers
 // ─────────────────────────────────────────────────────────────
 
+/**
+ * Get all previously asked question texts from session history
+ */
+function getPreviouslyAskedQuestions(session: Session): Set<string> {
+  const asked = new Set<string>();
+  for (const round of session.rounds) {
+    for (const q of round.questions) {
+      asked.add(q.questionText.toLowerCase().trim());
+    }
+  }
+  return asked;
+}
+
+/**
+ * Generate contextual follow-up questions based on previous responses
+ */
+function generateContextualQuestions(session: Session): string[] {
+  const dominantHyp = session.dominantHypothesis;
+  const contextualQuestions: string[] = [];
+
+  if (dominantHyp === 'access_barrier') {
+    contextualQuestions.push(
+      'What specific access or permissions were missing?',
+      'Who would need to grant you access to resolve this?',
+      'How long did you wait before giving up on access?'
+    );
+  } else if (dominantHyp === 'comprehension_gap') {
+    contextualQuestions.push(
+      'Which part was most confusing or unclear?',
+      'What would have made this easier to understand?',
+      'Did you find any documentation that helped, even partially?'
+    );
+  } else if (dominantHyp === 'tool_friction') {
+    contextualQuestions.push(
+      'What specific error or issue did you encounter?',
+      'Is this a recurring problem or was it a one-time issue?',
+      'What tool or alternative did you end up using instead?'
+    );
+  } else if (dominantHyp === 'time_constraint') {
+    contextualQuestions.push(
+      'How much time did you have available for this task?',
+      'What took longer than expected?',
+      'Would additional time have solved the problem, or is it deeper?'
+    );
+  } else if (dominantHyp === 'process_unclear') {
+    contextualQuestions.push(
+      'At which step did you get stuck or confused?',
+      'Who did you ask for help, and what did they say?',
+      'Is there a documented process you were trying to follow?'
+    );
+  } else {
+    contextualQuestions.push(
+      'Can you tell me more about what made this difficult?',
+      'What would have made this experience better?',
+      'Is there anything else that contributed to this problem?'
+    );
+  }
+
+  return contextualQuestions.slice(0, 3);
+}
+
 async function generateRoundQuestions(
   session: Session,
   roundNumber: number
 ): Promise<Question[]> {
+  // Get previously asked questions for deduplication
+  const previouslyAsked = getPreviouslyAskedQuestions(session);
+
   // Try to fetch templates from S3
-  let templates = DEFAULT_QUESTIONS[roundNumber] || DEFAULT_QUESTIONS[1];
+  let templates = DEFAULT_QUESTIONS[roundNumber];
 
   try {
     const s3Templates = await s3Client.getQuestionTemplates();
@@ -208,7 +300,23 @@ async function generateRoundQuestions(
     // Use default templates
   }
 
-  return templates.map((template, idx) => ({
+  // If no templates for this round, generate contextual questions
+  if (!templates) {
+    templates = generateContextualQuestions(session);
+  }
+
+  // Filter out duplicates
+  const filteredTemplates = templates.filter(template => {
+    const normalized = template.replace('{domainActivity}', session.domainActivity).toLowerCase().trim();
+    return !previouslyAsked.has(normalized);
+  });
+
+  // If all filtered out, generate contextual
+  const finalTemplates = filteredTemplates.length > 0
+    ? filteredTemplates
+    : generateContextualQuestions(session);
+
+  return finalTemplates.map((template, idx) => ({
     questionId: `R${roundNumber}Q${idx + 1}`,
     questionText: template.replace('{domainActivity}', session.domainActivity),
   }));

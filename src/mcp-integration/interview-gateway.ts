@@ -165,8 +165,9 @@ const GITHUB_OWNER = process.env.GITHUB_OWNER || 'arcfoundry-ai';
 const GITHUB_REPO = process.env.GITHUB_REPO || 'arcfoundry-context-MCP';
 const AWS_REGION = process.env.AWS_REGION || 'us-west-2';
 const DOMAIN = 'forge-intent';
+const MAX_ROUNDS = 7; // Maximum interview rounds before forced termination
 
-// CDM Question Templates
+// CDM Question Templates (Phases 1-7)
 const DEFAULT_QUESTIONS: Record<number, string[]> = {
   1: [
     'Walk me through the last time you {domainActivity}.',
@@ -182,6 +183,26 @@ const DEFAULT_QUESTIONS: Record<number, string[]> = {
     'If you could change one thing about this experience, what would it be?',
     'What would have helped you succeed faster?',
     'How often does this kind of friction happen?',
+  ],
+  4: [
+    'Looking back at what you described, what was the single biggest obstacle?',
+    'Were there any workarounds you discovered that helped?',
+    'Who else on your team experiences this same issue?',
+  ],
+  5: [
+    'If this issue were completely solved tomorrow, what would change for you?',
+    'What have you already tried that didn\'t work?',
+    'Is there a specific moment where things tend to break down?',
+  ],
+  6: [
+    'How does this problem affect your broader goals or deadlines?',
+    'Have you seen this handled better elsewhere (other tools, teams, companies)?',
+    'What would you need to see to believe this was truly fixed?',
+  ],
+  7: [
+    'In one sentence, what is the core problem you\'re facing?',
+    'What would success look like for you?',
+    'Is there anything else we haven\'t covered that feels important?',
   ],
 };
 
@@ -512,8 +533,15 @@ export async function runTurn(
 
   // Generate next round
   const nextRoundNum = session.currentRound + 1;
-  if (nextRoundNum > 3) {
-    session.state = 'WAITING_FOR_INPUT';
+
+  // Max rounds reached - terminate with best hypothesis
+  if (nextRoundNum > MAX_ROUNDS) {
+    session.state = 'CONVERGENCE_REACHED'; // Forced convergence at max rounds
+    session.metadata = {
+      ...session.metadata,
+      terminationReason: 'max_rounds_reached',
+      roundsCompleted: session.currentRound,
+    };
     const receipt = await saveSessionToS3(session);
     return { bayesian, nextQuestions: null, receipt };
   }
@@ -529,11 +557,25 @@ export async function runTurn(
 
 export async function advanceRound(
   sessionId: string
-): Promise<{ newRoundNumber: number; questions: Question[]; receipt: ConfirmationReceipt } | null> {
+): Promise<{ newRoundNumber: number; questions: Question[]; receipt: ConfirmationReceipt; maxReached?: boolean } | null> {
   const session = await getSession(sessionId);
   if (!session) return null;
 
   const nextRound = session.currentRound + 1;
+
+  // Max rounds check
+  if (nextRound > MAX_ROUNDS) {
+    session.state = 'CONVERGENCE_REACHED';
+    session.metadata = {
+      ...session.metadata,
+      terminationReason: 'max_rounds_reached',
+      roundsCompleted: session.currentRound,
+    };
+    session.lastActivity = new Date().toISOString();
+    const receipt = await saveSessionToS3(session);
+    return { newRoundNumber: session.currentRound, questions: [], receipt, maxReached: true };
+  }
+
   const questions = generateRoundQuestions(session, nextRound);
 
   session.rounds.push({ roundNumber: nextRound, questions, completed: false });
@@ -542,7 +584,7 @@ export async function advanceRound(
   session.lastActivity = new Date().toISOString();
 
   const receipt = await saveSessionToS3(session);
-  return { newRoundNumber: nextRound, questions, receipt };
+  return { newRoundNumber: nextRound, questions, receipt, maxReached: false };
 }
 
 // ─── Convergence & Analysis (4 tools) ────────────────────────────
@@ -740,12 +782,138 @@ export async function terminate(
 
 // ─── Internal Helpers ────────────────────────────────────────────
 
+/**
+ * Get all previously asked question texts from session history
+ */
+function getPreviouslyAskedQuestions(session: Session): Set<string> {
+  const asked = new Set<string>();
+  for (const round of session.rounds) {
+    for (const q of round.questions) {
+      asked.add(q.questionText.toLowerCase().trim());
+    }
+  }
+  return asked;
+}
+
+/**
+ * Generate questions for a round, with deduplication against previous rounds
+ */
 function generateRoundQuestions(session: Session, roundNumber: number): Question[] {
-  const templates = DEFAULT_QUESTIONS[roundNumber] || DEFAULT_QUESTIONS[1];
-  return templates.map((template, idx) => ({
+  // Get previously asked questions for deduplication
+  const previouslyAsked = getPreviouslyAskedQuestions(session);
+
+  // Get templates for this round, with fallback chain
+  let templates = DEFAULT_QUESTIONS[roundNumber];
+
+  // If no templates for this round, try to generate contextual follow-ups
+  if (!templates) {
+    templates = generateContextualQuestions(session, roundNumber);
+  }
+
+  // Filter out any questions that have already been asked (fuzzy match)
+  const filteredTemplates = templates.filter(template => {
+    const normalized = template.replace('{domainActivity}', session.domainActivity).toLowerCase().trim();
+    return !previouslyAsked.has(normalized);
+  });
+
+  // If all questions were duplicates, generate contextual questions
+  const finalTemplates = filteredTemplates.length > 0
+    ? filteredTemplates
+    : generateContextualQuestions(session, roundNumber);
+
+  return finalTemplates.map((template, idx) => ({
     questionId: `R${roundNumber}Q${idx + 1}`,
     questionText: template.replace('{domainActivity}', session.domainActivity),
   }));
+}
+
+/**
+ * Generate contextual follow-up questions based on previous responses
+ * Used when DEFAULT_QUESTIONS are exhausted or all templates were duplicates
+ */
+function generateContextualQuestions(session: Session, roundNumber: number): string[] {
+  // Extract key themes from previous responses
+  const themes = extractResponseThemes(session);
+  const dominantHyp = session.dominantHypothesis;
+
+  const contextualQuestions: string[] = [];
+
+  // Generate hypothesis-specific probing questions
+  if (dominantHyp === 'access_barrier') {
+    contextualQuestions.push(
+      'What specific access or permissions were missing?',
+      'Who would need to grant you access to resolve this?',
+      'How long did you wait before giving up on access?'
+    );
+  } else if (dominantHyp === 'comprehension_gap') {
+    contextualQuestions.push(
+      'Which part was most confusing or unclear?',
+      'What would have made this easier to understand?',
+      'Did you find any documentation that helped, even partially?'
+    );
+  } else if (dominantHyp === 'tool_friction') {
+    contextualQuestions.push(
+      'What specific error or issue did you encounter?',
+      'Is this a recurring problem or was it a one-time issue?',
+      'What tool or alternative did you end up using instead?'
+    );
+  } else if (dominantHyp === 'time_constraint') {
+    contextualQuestions.push(
+      'How much time did you have available for this task?',
+      'What took longer than expected?',
+      'Would additional time have solved the problem, or is it deeper?'
+    );
+  } else if (dominantHyp === 'process_unclear') {
+    contextualQuestions.push(
+      'At which step did you get stuck or confused?',
+      'Who did you ask for help, and what did they say?',
+      'Is there a documented process you were trying to follow?'
+    );
+  } else {
+    // Generic deep-dive questions
+    contextualQuestions.push(
+      'Can you tell me more about what made this difficult?',
+      'What would have made this experience better?',
+      'Is there anything else that contributed to this problem?'
+    );
+  }
+
+  // Add theme-based questions if we found specific keywords
+  if (themes.has('documentation')) {
+    contextualQuestions.push('What was missing from the documentation?');
+  }
+  if (themes.has('support')) {
+    contextualQuestions.push('What kind of support would have helped?');
+  }
+  if (themes.has('training')) {
+    contextualQuestions.push('Would training have prevented this issue?');
+  }
+
+  // Return first 3 unique questions
+  return contextualQuestions.slice(0, 3);
+}
+
+/**
+ * Extract key themes/keywords from session responses
+ */
+function extractResponseThemes(session: Session): Set<string> {
+  const themes = new Set<string>();
+  const keywords = ['documentation', 'support', 'training', 'help', 'unclear', 'slow', 'broken', 'access'];
+
+  for (const round of session.rounds) {
+    for (const q of round.questions) {
+      if (q.response) {
+        const resp = q.response.toLowerCase();
+        for (const kw of keywords) {
+          if (resp.includes(kw)) {
+            themes.add(kw);
+          }
+        }
+      }
+    }
+  }
+
+  return themes;
 }
 
 function scoreResponse(response: string): WolframScore {
