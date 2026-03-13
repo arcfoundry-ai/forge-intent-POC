@@ -1,0 +1,176 @@
+{
+  "$schema": "https://docs.openclaw.ai/schema/openclaw.json",
+
+  "gateway": {
+    "port": 3100,
+    "host": "0.0.0.0",
+    "basePath": "/openclaw",
+    "reload": {
+      "mode": "hybrid"
+    }
+  },
+
+  "env": {
+    "vars": {
+      "FORGE_INTENT_CALLBACK_URL": "${FORGE_INTENT_URL:-http://localhost:3000}/api/openclaw/callback",
+      "FORGE_INTENT_WEBHOOK_SECRET": "${FORGE_INTENT_WEBHOOK_SECRET}"
+    }
+  },
+
+  "agents": {
+    "defaults": {
+      "workspace": "/data/openclaw/workspaces",
+      "model": {
+        "primary": "anthropic/claude-sonnet-4-5",
+        "fallbacks": ["anthropic/claude-haiku-4-5"]
+      },
+      "heartbeat": {
+        "every": "5m",
+        "target": "last"
+      }
+    },
+    "list": [
+      {
+        "id": "forge-intent-router",
+        "description": "Router agent - spawns per-interviewee agents dynamically",
+        "default": true,
+        "workspace": "/data/openclaw/workspaces/router"
+      }
+    ]
+  },
+
+  "channels": {
+    "email": {
+      "enabled": true,
+      "provider": "smtp",
+      "smtp": {
+        "host": "${SMTP_HOST}",
+        "port": 587,
+        "secure": true,
+        "auth": {
+          "user": "${SMTP_USER}",
+          "pass": "${SMTP_PASS}"
+        }
+      },
+      "from": {
+        "name": "ArcFoundry Interview",
+        "email": "interview@arcfoundry.ai"
+      },
+      "dmPolicy": "allowlist"
+    },
+    "sms": {
+      "enabled": true,
+      "provider": "twilio",
+      "twilio": {
+        "accountSid": "${TWILIO_ACCOUNT_SID}",
+        "authToken": "${TWILIO_AUTH_TOKEN}",
+        "fromNumber": "${TWILIO_FROM_NUMBER}"
+      },
+      "dmPolicy": "allowlist"
+    },
+    "whatsapp": {
+      "enabled": true,
+      "provider": "twilio",
+      "twilio": {
+        "accountSid": "${TWILIO_ACCOUNT_SID}",
+        "authToken": "${TWILIO_AUTH_TOKEN}",
+        "fromNumber": "${TWILIO_WHATSAPP_NUMBER}"
+      },
+      "dmPolicy": "allowlist"
+    },
+    "slack": {
+      "enabled": true,
+      "botToken": "${SLACK_BOT_TOKEN}",
+      "appToken": "${SLACK_APP_TOKEN}",
+      "dmPolicy": "allowlist"
+    }
+  },
+
+  "session": {
+    "dmScope": "per-channel-peer",
+    "threadBindings": {
+      "enabled": true,
+      "idleHours": 72
+    },
+    "reset": {
+      "mode": "idle",
+      "idleMinutes": 4320
+    }
+  },
+
+  "hooks": {
+    "enabled": true,
+    "token": "${FORGE_INTENT_WEBHOOK_SECRET}",
+    "path": "/hooks",
+    "mappings": [
+      {
+        "match": { "path": "interview-start" },
+        "action": "custom",
+        "handler": "interview.start",
+        "description": "Start new interview session for interviewee"
+      },
+      {
+        "match": { "path": "interview-continue" },
+        "action": "custom",
+        "handler": "interview.continue",
+        "description": "Send next level questions to interviewee"
+      },
+      {
+        "match": { "path": "interview-complete" },
+        "action": "custom",
+        "handler": "interview.complete",
+        "description": "Mark interview as complete, stop cron jobs"
+      },
+      {
+        "match": { "path": "interview-cancel" },
+        "action": "custom",
+        "handler": "interview.cancel",
+        "description": "Cancel interview and cleanup"
+      }
+    ]
+  },
+
+  "cron": {
+    "enabled": true,
+    "maxConcurrentRuns": 5,
+    "sessionRetention": "168h",
+    "runLog": {
+      "maxBytes": "5mb",
+      "keepLines": 5000
+    },
+    "defaults": {
+      "timezone": "America/Los_Angeles",
+      "retryPolicy": {
+        "maxRetries": 3,
+        "backoffMinutes": [5, 15, 60]
+      }
+    }
+  },
+
+  "bindings": [
+    {
+      "match": { "metadata.type": "forge-intent-interview" },
+      "agentId": "dynamic",
+      "routingKey": "metadata.intervieweeId",
+      "description": "Route interview messages to per-interviewee agents"
+    }
+  ],
+
+  "templates": {
+    "interview": {
+      "reminder": {
+        "subject": "Reminder: ArcFoundry Interview - Your Input Needed",
+        "body": "Hi {{intervieweeName}},\n\nThis is a friendly reminder that we're waiting for your response to the interview questions.\n\nPlease reply at your convenience. Your insights are valuable to us.\n\nBest,\nArcFoundry Team"
+      },
+      "timeout": {
+        "subject": "Interview Session Expiring Soon",
+        "body": "Hi {{intervieweeName}},\n\nYour interview session will expire in {{hoursRemaining}} hours if we don't hear from you.\n\nPlease respond to continue the conversation, or let us know if you need more time.\n\nBest,\nArcFoundry Team"
+      },
+      "escalation": {
+        "internal": true,
+        "target": "employee",
+        "message": "Interviewee {{intervieweeName}} ({{intervieweeId}}) has not responded after {{reminderCount}} reminders. Session will timeout in {{hoursRemaining}} hours."
+      }
+    }
+  }
+}
