@@ -1,59 +1,75 @@
 # Forge Intent Engine — CDM Interview System
 
-> AI-powered root cause discovery using Critical Decision Method (CDM) interviews with Bayesian convergence detection.
+> AI-powered root cause discovery using Critical Decision Method (CDM) interviews with multi-channel communication via OpenClaw Gateway.
 
 ## Overview
 
-The Forge Intent Engine conducts structured interviews to identify root causes of process failures, knowledge gaps, and organizational challenges. It uses a **Bayesian probability model** to iteratively narrow down hypotheses based on respondent feedback, converging on the most likely root cause with quantifiable confidence.
+The Forge Intent Engine conducts structured interviews to identify root causes of user friction. It uses a **Bayesian probability model** to iteratively narrow down hypotheses based on respondent feedback, converging on the most likely root cause with quantifiable confidence.
 
-### What This Does
+### Key Capabilities
 
-1. **Structured CDM Interviews** — Guides respondents through Critical Decision Method questions that elicit expert knowledge about incidents and challenges
-2. **Bayesian Convergence** — Updates hypothesis probabilities in real-time based on responses, stopping when 85% confidence is reached
-3. **Multi-Respondent Analysis** — Aggregates findings across 5+ respondents to detect consensus vs. divergence
-4. **Actionable Reports** — Generates recommendations based on identified root causes
-
-### Use Cases
-
-- **Post-Incident Analysis** — Understand what went wrong after production incidents
-- **Process Improvement** — Identify bottlenecks and inefficiencies in workflows
-- **Knowledge Discovery** — Surface tacit knowledge from domain experts
-- **Onboarding Assessment** — Understand challenges new team members face
+| Capability | Description |
+|------------|-------------|
+| **Multi-Channel Interviews** | Email, SMS, Slack, WhatsApp — interviewee chooses preferred channel |
+| **Adaptive Questioning** | Level 1 questions are standard; Level 2+ are custom per interviewee |
+| **Autonomous Session Management** | Configurable timeouts, automated reminders, escalation handling |
+| **Parallel Interviews** | 50+ interviews per day, 5 rounds each via single OpenClaw Gateway |
+| **Root Cause Convergence** | Bayesian analysis identifies when interviews have converged |
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Forge Intent Engine                       │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐       │
-│  │   Frontend   │───▶│   HTTP API   │───▶│  MCP Tools   │       │
-│  │   Portal     │    │   (Express)  │    │  (14 tools)  │       │
-│  └──────────────┘    └──────────────┘    └──────────────┘       │
-│         │                   │                   │                │
-│         │                   ▼                   │                │
-│         │           ┌──────────────┐           │                │
-│         │           │   Handlers   │◀──────────┘                │
-│         │           │  • Session   │                            │
-│         │           │  • Execution │                            │
-│         │           │  • Analysis  │                            │
-│         │           │  • Lifecycle │                            │
-│         │           └──────────────┘                            │
-│         │                   │                                    │
-│         ▼                   ▼                                    │
-│  ┌──────────────────────────────────────────────────┐           │
-│  │                    S3 Storage                     │           │
-│  │  s3://arcfoundry-context/forge-intent/           │           │
-│  │  ├── hot/index.json     (active sessions index)  │           │
-│  │  ├── warm/sessions/     (session data)           │           │
-│  │  └── cold/archives/     (completed sessions)     │           │
-│  └──────────────────────────────────────────────────┘           │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              FORGE INTENT SYSTEM                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────────────┐ │
+│  │   Employee UI   │    │  Forge Intent   │    │   Context MCP Server    │ │
+│  │   (Web App)     │───▶│   Orchestrator  │◀──▶│  context.arcfoundry.ai  │ │
+│  │                 │    │                 │    │                         │ │
+│  │  - Enter info   │    │  - Question gen │    │  - CDM methodology      │ │
+│  │  - Start intv   │    │  - Grammar fix  │    │  - Analysis patterns    │ │
+│  │  - View status  │    │  - Level mgmt   │    │  - Domain knowledge     │ │
+│  └─────────────────┘    │  - DynamoDB     │    └─────────────────────────┘ │
+│                         └────────┬────────┘                                 │
+│                                  │                                          │
+│                                  │ HTTP webhooks                            │
+│                                  ▼                                          │
+│                    ┌─────────────────────────────┐                         │
+│                    │    OpenClaw Gateway         │                         │
+│                    │    (Multi-Agent Router)     │                         │
+│                    │                             │                         │
+│                    │  ┌───────────────────────┐ │                         │
+│                    │  │    Cron Scheduler     │ │                         │
+│                    │  │  - Reminders          │ │                         │
+│                    │  │  - Timeouts           │ │                         │
+│                    │  │  - Escalations        │ │                         │
+│                    │  └───────────────────────┘ │                         │
+│                    │                             │                         │
+│                    │  ┌───────────────────────┐ │                         │
+│                    │  │  Channel Adapters     │ │                         │
+│                    │  │  Email│SMS│Slack│WA   │ │                         │
+│                    │  └───────────────────────┘ │                         │
+│                    └──────────────┬──────────────┘                         │
+│                                   │                                         │
+└───────────────────────────────────┼─────────────────────────────────────────┘
+                                    │
+                                    ▼
+                    ┌───────────────────────────────┐
+                    │       INTERVIEWEES            │
+                    │  (Email, SMS, Slack, WhatsApp)│
+                    └───────────────────────────────┘
 ```
+
+### Data Storage
+
+| Store | Purpose | Contents |
+|-------|---------|----------|
+| **DynamoDB** | Session state | Interview progress, interviewee info, OpenClaw session IDs |
+| **S3** | Interview data | Questions, responses (raw + corrected), audit logs |
+| **Context MCP** | Methodology | CDM rules, analysis patterns, domain knowledge |
 
 ---
 
@@ -80,278 +96,226 @@ The engine exposes 14 MCP tools for integration with Claude and other AI agents:
 
 ---
 
-## AWS Infrastructure Additions
+## DynamoDB Schema
 
-### S3 Storage Structure
+### Table: `forge-intent-sessions`
 
-Add the following paths to the existing `arcfoundry-context` bucket:
+**Primary Key:** `PK` (HASH) + `SK` (RANGE)
 
-```
-s3://arcfoundry-context/
-└── forge-intent/
-    ├── hot/
-    │   └── index.json          # Active sessions index (updated per activity)
-    ├── warm/
-    │   └── sessions/
-    │       └── {projectId}/
-    │           └── {sessionId}.json
-    └── cold/
-        └── archives/
-            └── {year}/{month}/
-                └── {projectId}-{sessionId}.json
-```
+**Global Secondary Indexes:**
+- `OpenClawSessionIndex` — Lookup by OpenClaw session ID
+- `IntervieweeIndex` — Lookup by interviewee ID
 
-### Required IAM Permissions
+### Interview Record (PK: `INTERVIEW#{interviewId}`, SK: `MANIFEST`)
 
-Add to the existing ECS task role:
-
-```json
+```typescript
 {
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:GetObject",
-        "s3:PutObject",
-        "s3:DeleteObject",
-        "s3:ListBucket"
-      ],
-      "Resource": [
-        "arn:aws:s3:::arcfoundry-context/forge-intent/*",
-        "arn:aws:s3:::arcfoundry-context"
-      ],
-      "Condition": {
-        "StringLike": {
-          "s3:prefix": ["forge-intent/*"]
-        }
-      }
-    }
-  ]
+  interviewId: string;
+  projectId: string;
+  problemStatement: string;
+  status: 'draft' | 'active' | 'converged' | 'cancelled';
+  totalInterviewees: number;
+  activeInterviewees: number;
+  completedInterviewees: number;
+  convergenceScore: number;
+  rootCauseIdentified: boolean;
+  config: {
+    timeoutHours: number;
+    reminderSchedule: number[];
+    maxLevels: number;
+    convergenceThreshold: number;
+  };
+  createdAt: string;
+  createdBy: string;
 }
 ```
 
-### Environment Variables
+### Session Record (PK: `INTERVIEW#{interviewId}`, SK: `SESSION#{intervieweeId}`)
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `AWS_REGION` | AWS region | `us-west-2` |
-| `S3_BUCKET` | S3 bucket name | `arcfoundry-context` |
-| `S3_PREFIX` | Prefix for intent data | `forge-intent` |
-| `PORT` | HTTP server port | `3001` |
-| `GITHUB_TOKEN` | GitHub PAT for archiving | `ghp_...` |
-| `GITHUB_OWNER` | GitHub org | `arcfoundry-ai` |
-| `GITHUB_REPO` | Archive repo | `forge-intent-archives` |
+```typescript
+{
+  interviewId: string;
+  intervieweeId: string;
+  openclawSessionId: string | null;  // GSI1 key
+  openclawAgentId: string | null;
+  interviewee: {
+    name: string;
+    email?: string;
+    phone?: string;
+    slackUserId?: string;
+    preferredChannel: 'email' | 'sms' | 'whatsapp' | 'slack';
+    timezone: string;
+  };
+  status: 'pending' | 'active' | 'processing' | 'completed' | 'timed_out' | 'cancelled';
+  currentLevel: number;
+  levelsCompleted: number[];
+  totalResponsesReceived: number;
+  convergenceScore: number;
+  createdAt: string;
+  startedAt: string | null;
+  lastActivityAt: string;
+  completedAt: string | null;
+}
+```
 
 ---
 
-## Deployment Guide
+## OpenClaw Integration
 
-### Option A: Integrate into Existing ArcFoundry Context MCP
+### Webhook Contracts
 
-This is the recommended approach — add interview tools to the existing MCP server.
+**Forge Intent → OpenClaw**
 
-#### Step 1: Merge Interview Gateway
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /hooks/interview-start` | Start new interview session |
+| `POST /hooks/interview-continue` | Send next level questions |
+| `POST /hooks/interview-complete` | Mark interview complete |
+| `POST /hooks/interview-cancel` | Cancel interview |
 
-Copy the integration code:
+**OpenClaw → Forge Intent**
 
-```bash
-cp src/mcp-integration/interview-gateway.ts \
-   ../arcfoundry-context-MCP/server/src/interview-gateway.ts
+| Callback Type | Purpose |
+|---------------|---------|
+| `response` | Interviewee responded to questions |
+| `partial_response` | Some questions answered |
+| `timeout` | Session timed out |
+| `escalation` | Reminders exhausted |
+| `error` | Delivery or processing error |
+
+### Callback Endpoint
+
 ```
+POST /api/openclaw/callback
+Authorization: X-OpenClaw-Signature: sha256=...
+Content-Type: application/json
 
-#### Step 2: Add Dependencies
-
-```bash
-cd ../arcfoundry-context-MCP/server
-npm install uuid
-```
-
-#### Step 3: Register Tools in server.ts
-
-Add imports:
-
-```typescript
-import {
-  createSession,
-  getSession,
-  listSessions,
-  deleteSession,
-  getQuestions,
-  submitResponse,
-  runTurn,
-  advanceRound,
-  checkConvergence,
-  generateReport,
-  runGateC,
-  analyzeProject,
-  handoff,
-  terminate,
-  INTERVIEW_TOOL_DEFINITIONS,
-} from './interview-gateway.js';
-```
-
-Register tools:
-
-```typescript
-// Add to tool registration
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: [
-    ...CONTEXT_TOOLS,
-    ...INTERVIEW_TOOL_DEFINITIONS,  // Add interview tools
+{
+  "type": "response",
+  "sessionId": "oc_sess_abc123",
+  "interviewId": "int_xyz789",
+  "intervieweeId": "user_def456",
+  "level": 1,
+  "responses": [
+    { "questionId": "q1", "answer": "..." }
   ],
-}));
-
-// Add tool handlers in CallToolRequestSchema handler
-case 'interview_create_session':
-  return createSession(args);
-case 'interview_get_session':
-  return getSession(args.sessionId);
-// ... (see interview-gateway.ts for all 14 tools)
-```
-
-#### Step 4: Deploy to ECS
-
-```bash
-# Build and push Docker image
-docker build -t arcfoundry-context-mcp .
-docker tag arcfoundry-context-mcp:latest \
-  <AWS_ACCOUNT>.dkr.ecr.us-west-2.amazonaws.com/arcfoundry-context-mcp:latest
-docker push <AWS_ACCOUNT>.dkr.ecr.us-west-2.amazonaws.com/arcfoundry-context-mcp:latest
-
-# Update ECS service
-aws ecs update-service \
-  --cluster arcfoundry-prod \
-  --service context-mcp \
-  --force-new-deployment
+  "sessionState": {
+    "remindersSent": 1,
+    "totalResponseTime": 3600
+  }
+}
 ```
 
 ---
 
-### Option B: Standalone Deployment
+## API Endpoints
 
-Deploy Forge Intent as a separate ECS service.
+### Base URL
 
-#### Step 1: Create ECR Repository
+- **Local**: `http://localhost:3001/api`
+- **Production**: `https://forge-intent.arcfoundry.ai/api`
 
-```bash
-aws ecr create-repository \
-  --repository-name forge-intent-engine \
-  --image-scanning-configuration scanOnPush=true
+### Session Management
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/sessions` | Create new session |
+| `GET` | `/sessions/:sessionId` | Get session |
+| `DELETE` | `/sessions/:sessionId` | Delete session |
+| `GET` | `/projects/:projectId/sessions` | List sessions for project |
+
+### Interview Execution
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/sessions/:sessionId/questions` | Get current questions |
+| `POST` | `/sessions/:sessionId/responses` | Submit single response |
+| `POST` | `/sessions/:sessionId/turn` | Submit all responses + Bayesian update |
+| `POST` | `/sessions/:sessionId/advance` | Advance to next round |
+
+### Analysis
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/sessions/:sessionId/convergence` | Check convergence status |
+| `POST` | `/sessions/:sessionId/report` | Generate report |
+| `POST` | `/projects/:projectId/analyze` | Cross-session analysis |
+| `POST` | `/projects/:projectId/gate-c` | Run Gate C certification |
+
+### Lifecycle
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/sessions/:sessionId/handoff` | Hand off to target agent |
+| `POST` | `/sessions/:sessionId/terminate` | Terminate session |
+
+### MCP
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/mcp/tools` | List available MCP tools |
+| `POST` | `/mcp/execute` | Execute MCP tool |
+
+### OpenClaw Callbacks
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/openclaw/callback` | Receive callbacks from OpenClaw |
+
+---
+
+## File Structure
+
+```
+forge-intent-POC/
+├── public/
+│   └── index.html           # Frontend portal
+├── src/
+│   ├── server.ts            # Express HTTP API + OpenClaw routes
+│   ├── index.ts             # MCP server entry
+│   ├── types.ts             # TypeScript interfaces
+│   ├── handlers/
+│   │   ├── session-handlers.ts
+│   │   ├── execution-handlers.ts
+│   │   ├── analysis-handlers.ts
+│   │   ├── lifecycle-handlers.ts
+│   │   └── openclaw-callback-handler.ts   # Webhook callback processing
+│   ├── services/
+│   │   └── openclaw-client.ts             # OpenClaw API client
+│   ├── mcp/
+│   │   └── tools.ts         # MCP tool definitions (14 tools)
+│   ├── mcp-integration/
+│   │   └── interview-gateway.ts           # Context MCP integration
+│   └── storage/
+│       ├── dynamodb-client.ts             # DynamoDB operations
+│       ├── dynamodb-types.ts              # DynamoDB type definitions
+│       └── s3-client.ts                   # S3 operations
+├── config/
+│   └── openclaw.json        # OpenClaw gateway configuration
+├── docs/
+│   ├── FORGE-INTENT-ARCHITECTURE-SUMMARY.md
+│   ├── FORGE-INTENT-SYSTEM-SPEC.md
+│   ├── OPENCLAW-WEBHOOK-CONTRACTS.md
+│   ├── S3-INTERVIEW-DATA-STRUCTURE.md
+│   └── CONTEXT-MCP-INTEGRATION-SPEC.md
+├── package.json
+├── tsconfig.json
+└── README.md
 ```
 
-#### Step 2: Build and Push
+---
 
-```bash
-cd forge-intent-POC
+## Environment Variables
 
-# Build
-npm install
-npm run build
-
-# Docker
-docker build -t forge-intent-engine .
-docker tag forge-intent-engine:latest \
-  <AWS_ACCOUNT>.dkr.ecr.us-west-2.amazonaws.com/forge-intent-engine:latest
-
-# Push
-aws ecr get-login-password --region us-west-2 | \
-  docker login --username AWS --password-stdin <AWS_ACCOUNT>.dkr.ecr.us-west-2.amazonaws.com
-docker push <AWS_ACCOUNT>.dkr.ecr.us-west-2.amazonaws.com/forge-intent-engine:latest
-```
-
-#### Step 3: Create ECS Task Definition
-
-```json
-{
-  "family": "forge-intent-engine",
-  "networkMode": "awsvpc",
-  "requiresCompatibilities": ["FARGATE"],
-  "cpu": "512",
-  "memory": "1024",
-  "executionRoleArn": "arn:aws:iam::<AWS_ACCOUNT>:role/ecsTaskExecutionRole",
-  "taskRoleArn": "arn:aws:iam::<AWS_ACCOUNT>:role/forge-intent-task-role",
-  "containerDefinitions": [
-    {
-      "name": "forge-intent-engine",
-      "image": "<AWS_ACCOUNT>.dkr.ecr.us-west-2.amazonaws.com/forge-intent-engine:latest",
-      "essential": true,
-      "portMappings": [
-        {
-          "containerPort": 3001,
-          "protocol": "tcp"
-        }
-      ],
-      "environment": [
-        { "name": "AWS_REGION", "value": "us-west-2" },
-        { "name": "S3_BUCKET", "value": "arcfoundry-context" },
-        { "name": "S3_PREFIX", "value": "forge-intent" },
-        { "name": "PORT", "value": "3001" }
-      ],
-      "secrets": [
-        {
-          "name": "GITHUB_TOKEN",
-          "valueFrom": "arn:aws:secretsmanager:us-west-2:<AWS_ACCOUNT>:secret:forge-intent/github-token"
-        }
-      ],
-      "logConfiguration": {
-        "logDriver": "awslogs",
-        "options": {
-          "awslogs-group": "/ecs/forge-intent-engine",
-          "awslogs-region": "us-west-2",
-          "awslogs-stream-prefix": "ecs"
-        }
-      }
-    }
-  ]
-}
-```
-
-#### Step 4: Create ECS Service
-
-```bash
-aws ecs create-service \
-  --cluster arcfoundry-prod \
-  --service-name forge-intent-engine \
-  --task-definition forge-intent-engine:1 \
-  --desired-count 2 \
-  --launch-type FARGATE \
-  --network-configuration "awsvpcConfiguration={subnets=[subnet-xxx,subnet-yyy],securityGroups=[sg-xxx],assignPublicIp=DISABLED}" \
-  --load-balancers "targetGroupArn=arn:aws:elasticloadbalancing:us-west-2:<AWS_ACCOUNT>:targetgroup/forge-intent-tg/xxx,containerName=forge-intent-engine,containerPort=3001"
-```
-
-#### Step 5: Configure ALB
-
-Add listener rule to existing ALB:
-
-```bash
-aws elbv2 create-rule \
-  --listener-arn arn:aws:elasticloadbalancing:us-west-2:<AWS_ACCOUNT>:listener/app/arcfoundry-alb/xxx/yyy \
-  --priority 20 \
-  --conditions Field=host-header,Values="forge-intent-api.arcfoundry.ai" \
-  --actions Type=forward,TargetGroupArn=arn:aws:elasticloadbalancing:us-west-2:<AWS_ACCOUNT>:targetgroup/forge-intent-tg/xxx
-```
-
-#### Step 6: Add Route53 Record
-
-```bash
-aws route53 change-resource-record-sets \
-  --hosted-zone-id Z0123456789ABC \
-  --change-batch '{
-    "Changes": [{
-      "Action": "CREATE",
-      "ResourceRecordSet": {
-        "Name": "forge-intent-api.arcfoundry.ai",
-        "Type": "A",
-        "AliasTarget": {
-          "HostedZoneId": "Z35SXDOTRQ7X7K",
-          "DNSName": "arcfoundry-alb-xxx.us-west-2.elb.amazonaws.com",
-          "EvaluateTargetHealth": true
-        }
-      }
-    }]
-  }'
-```
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PORT` | HTTP server port | `3001` |
+| `AWS_REGION` | AWS region | `us-west-2` |
+| `DYNAMODB_TABLE` | DynamoDB table name | `forge-intent-sessions` |
+| `S3_BUCKET` | S3 bucket for interview data | — |
+| `OPENCLAW_BASE_URL` | OpenClaw Gateway URL | `http://localhost:3100/openclaw` |
+| `FORGE_INTENT_WEBHOOK_SECRET` | Webhook signing secret | `dev-secret` |
+| `FORGE_INTENT_URL` | Callback URL for OpenClaw | `http://localhost:3001` |
 
 ---
 
@@ -360,8 +324,8 @@ aws route53 change-resource-record-sets \
 ### Prerequisites
 
 - Node.js 18+
-- AWS credentials configured
-- Access to `arcfoundry-context` S3 bucket
+- AWS credentials configured (for DynamoDB/S3)
+- OpenClaw Gateway running (optional, for multi-channel)
 
 ### Setup
 
@@ -393,143 +357,28 @@ npm run build
 
 ---
 
-## Portal Deployment
-
-The frontend portal is deployed to GitHub Pages.
-
-### Update Portal
-
-1. Edit `public/index.html`
-2. Commit and push to `main`
-3. GitHub Actions deploys automatically
-
-### Portal URL
-
-- **Production**: https://arcfoundry-ai.github.io/forge-intent-POC/
-
-### Portal Configuration
-
-The portal automatically detects API availability:
-
-1. Tries `http://localhost:3001/api` (local dev)
-2. Falls back to `https://forge-intent-api.arcfoundry.ai/api` (production)
-3. If no API available, runs in **Demo Mode** with simulated data
-
----
-
-## API Reference
-
-### Base URL
-
-- **Local**: `http://localhost:3001/api`
-- **Production**: `https://forge-intent-api.arcfoundry.ai/api`
-
-### Endpoints
-
-#### Create Session
-
-```http
-POST /api/sessions
-Content-Type: application/json
-
-{
-  "projectId": "forge-phoenix-ux",
-  "respondentDescription": "Senior Developer",
-  "domainActivity": "debugging production issues"
-}
-```
-
-Response:
-
-```json
-{
-  "sessionId": "sess-abc12345",
-  "state": "INITIALIZED",
-  "receipt": { ... }
-}
-```
-
-#### Run Interview Turn
-
-```http
-POST /api/sessions/{sessionId}/turn
-Content-Type: application/json
-
-{
-  "responses": [
-    { "questionId": "cdm-r1-q1", "response": "We had a major outage last week..." },
-    { "questionId": "cdm-r1-q2", "response": "I was the on-call engineer..." }
-  ]
-}
-```
-
-Response:
-
-```json
-{
-  "bayesian": {
-    "posteriors": {
-      "process_gaps": 0.45,
-      "tooling_limitations": 0.25,
-      "communication_breakdown": 0.15,
-      "knowledge_silos": 0.10,
-      "resource_constraints": 0.05
-    },
-    "dominantHypothesis": "process_gaps",
-    "dominantPosterior": 0.45,
-    "convergenceReached": false,
-    "recommendation": "Continue interview to gather more evidence."
-  },
-  "nextQuestions": [ ... ]
-}
-```
-
-#### Generate Report
-
-```http
-POST /api/sessions/{sessionId}/report
-```
-
-Response:
-
-```json
-{
-  "sessionId": "sess-abc12345",
-  "rootCause": "process_gaps",
-  "confidence": 0.87,
-  "evidenceChain": [ ... ],
-  "recommendations": [
-    {
-      "title": "Document Critical Processes",
-      "description": "Create runbooks for high-impact workflows",
-      "category": "Process",
-      "priority": "HIGH"
-    }
-  ]
-}
-```
-
----
-
 ## Session State Machine
 
 ```
-INITIALIZED ──▶ EXECUTING ──▶ WAITING_FOR_INPUT
-                    │                │
-                    │                ▼
-                    │         CONVERGENCE_REACHED ──▶ TERMINATED
-                    │                │
-                    ▼                ▼
-              TERMINATED ◀────── handoff()
+pending ──▶ active ──▶ processing ──▶ completed
+              │            │
+              │            ▼
+              │       [next level] ──▶ active
+              │
+              ├──▶ timed_out
+              ├──▶ cancelled
+              └──▶ error
 ```
 
 | State | Description |
 |-------|-------------|
-| `INITIALIZED` | Session created, not yet started |
-| `EXECUTING` | Processing responses, updating Bayesian model |
-| `WAITING_FOR_INPUT` | Awaiting respondent's answers |
-| `CONVERGENCE_REACHED` | 85% confidence achieved on root cause |
-| `TERMINATED` | Session ended (complete or abandoned) |
+| `pending` | Interviewee added, session not started |
+| `active` | Questions sent, awaiting response |
+| `processing` | Response received, running analysis |
+| `completed` | Interview finished (convergence or max levels) |
+| `timed_out` | No response within timeout window |
+| `cancelled` | Manually cancelled |
+| `error` | Unrecoverable error |
 
 ---
 
@@ -546,50 +395,15 @@ When converging on a root cause, sessions can be handed off to specialized agent
 
 ---
 
-## Files Structure
+## Documentation
 
-```
-forge-intent-POC/
-├── public/
-│   └── index.html           # Frontend portal
-├── src/
-│   ├── server.ts            # Express HTTP API
-│   ├── index.ts             # MCP server entry
-│   ├── types.ts             # TypeScript interfaces
-│   ├── handlers/
-│   │   ├── session-handlers.ts
-│   │   ├── execution-handlers.ts
-│   │   ├── analysis-handlers.ts
-│   │   └── lifecycle-handlers.ts
-│   ├── mcp/
-│   │   └── tools.ts         # MCP tool definitions
-│   ├── mcp-integration/
-│   │   ├── interview-gateway.ts  # Full integration (874 lines)
-│   │   └── README.md
-│   └── storage/
-│       └── s3-client.ts     # S3 operations
-├── .github/
-│   └── workflows/
-│       └── deploy-pages.yml # GitHub Pages deployment
-├── package.json
-├── tsconfig.json
-└── README.md
-```
+See the `docs/` directory for detailed specifications:
 
----
-
-## Integration with ArcFoundry Context MCP
-
-This POC is designed to be merged into the main `arcfoundry-context-MCP` repository. The integration code is in `src/mcp-integration/interview-gateway.ts`.
-
-### Integration Checklist
-
-- [ ] Copy `interview-gateway.ts` to `arcfoundry-context-MCP/server/src/`
-- [ ] Add `uuid` dependency
-- [ ] Register 14 interview tools in `server.ts`
-- [ ] Deploy updated MCP server to ECS
-- [ ] Verify tools available at `https://context.arcfoundry.ai`
-- [ ] Update portal API_BASE to production URL
+- **FORGE-INTENT-ARCHITECTURE-SUMMARY.md** — Complete system architecture (5 pages)
+- **FORGE-INTENT-SYSTEM-SPEC.md** — Detailed system specification
+- **OPENCLAW-WEBHOOK-CONTRACTS.md** — Webhook API contracts
+- **S3-INTERVIEW-DATA-STRUCTURE.md** — S3 storage structure
+- **CONTEXT-MCP-INTEGRATION-SPEC.md** — Context MCP integration
 
 ---
 
