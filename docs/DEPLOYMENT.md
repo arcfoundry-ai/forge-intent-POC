@@ -18,11 +18,11 @@
 ```bash
 aws ecr create-repository \
   --repository-name forge-intent-engine \
-  --region us-east-1 \
+  --region us-west-2 \
   --image-scanning-configuration scanOnPush=true
 
 # Note the repositoryUri from output:
-# <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/forge-intent-engine
+# <ACCOUNT_ID>.dkr.ecr.us-west-2.amazonaws.com/forge-intent-engine
 ```
 
 ### 1.2 Create Dockerfile
@@ -59,15 +59,15 @@ npm run build
 docker build -t forge-intent-engine:latest .
 
 # Login to ECR
-aws ecr get-login-password --region us-east-1 | \
+aws ecr get-login-password --region us-west-2 | \
   docker login --username AWS --password-stdin \
-  <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com
+  <ACCOUNT_ID>.dkr.ecr.us-west-2.amazonaws.com
 
 # Tag and push
 docker tag forge-intent-engine:latest \
-  <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/forge-intent-engine:latest
+  <ACCOUNT_ID>.dkr.ecr.us-west-2.amazonaws.com/forge-intent-engine:latest
 
-docker push <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/forge-intent-engine:latest
+docker push <ACCOUNT_ID>.dkr.ecr.us-west-2.amazonaws.com/forge-intent-engine:latest
 ```
 
 ### 1.4 Create IAM Task Role
@@ -99,7 +99,7 @@ Create `forge-intent-task-role` with this policy:
         "logs:CreateLogStream",
         "logs:PutLogEvents"
       ],
-      "Resource": "arn:aws:logs:us-east-1:*:log-group:/ecs/forge-intent-engine:*"
+      "Resource": "arn:aws:logs:us-west-2:*:log-group:/ecs/forge-intent-engine:*"
     }
   ]
 }
@@ -127,7 +127,7 @@ Trust relationship:
 aws secretsmanager create-secret \
   --name forge-intent/github-token \
   --secret-string "ghp_YOUR_GITHUB_PAT_HERE" \
-  --region us-east-1
+  --region us-west-2
 ```
 
 ### 1.6 Create CloudWatch Log Group
@@ -135,7 +135,7 @@ aws secretsmanager create-secret \
 ```bash
 aws logs create-log-group \
   --log-group-name /ecs/forge-intent-engine \
-  --region us-east-1
+  --region us-west-2
 ```
 
 ### 1.7 Register ECS Task Definition
@@ -154,7 +154,7 @@ Save as `task-definition.json`:
   "containerDefinitions": [
     {
       "name": "forge-intent-engine",
-      "image": "<ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/forge-intent-engine:latest",
+      "image": "<ACCOUNT_ID>.dkr.ecr.us-west-2.amazonaws.com/forge-intent-engine:latest",
       "essential": true,
       "portMappings": [
         {
@@ -163,7 +163,7 @@ Save as `task-definition.json`:
         }
       ],
       "environment": [
-        { "name": "AWS_REGION", "value": "us-east-1" },
+        { "name": "AWS_REGION", "value": "us-west-2" },
         { "name": "CONTEXT_BUCKET", "value": "arcfoundry-context" },
         { "name": "PORT", "value": "3001" },
         { "name": "GITHUB_OWNER", "value": "arcfoundry-ai" },
@@ -172,14 +172,14 @@ Save as `task-definition.json`:
       "secrets": [
         {
           "name": "GITHUB_TOKEN",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:<ACCOUNT_ID>:secret:forge-intent/github-token"
+          "valueFrom": "arn:aws:secretsmanager:us-west-2:<ACCOUNT_ID>:secret:forge-intent/github-token"
         }
       ],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
           "awslogs-group": "/ecs/forge-intent-engine",
-          "awslogs-region": "us-east-1",
+          "awslogs-region": "us-west-2",
           "awslogs-stream-prefix": "ecs"
         }
       },
@@ -228,7 +228,7 @@ aws ecs create-service \
   --launch-type FARGATE \
   --platform-version LATEST \
   --network-configuration "awsvpcConfiguration={subnets=[subnet-PRIVATE_1,subnet-PRIVATE_2],securityGroups=[sg-YOUR_SG],assignPublicIp=DISABLED}" \
-  --load-balancers "targetGroupArn=arn:aws:elasticloadbalancing:us-east-1:<ACCOUNT_ID>:targetgroup/forge-intent-tg/xxx,containerName=forge-intent-engine,containerPort=3001" \
+  --load-balancers "targetGroupArn=arn:aws:elasticloadbalancing:us-west-2:<ACCOUNT_ID>:targetgroup/forge-intent-tg/xxx,containerName=forge-intent-engine,containerPort=3001" \
   --health-check-grace-period-seconds 120
 ```
 
@@ -237,14 +237,14 @@ aws ecs create-service \
 ```bash
 # Get ALB listener ARN first
 aws elbv2 describe-listeners \
-  --load-balancer-arn arn:aws:elasticloadbalancing:us-east-1:<ACCOUNT_ID>:loadbalancer/app/arcfoundry-alb/xxx
+  --load-balancer-arn arn:aws:elasticloadbalancing:us-west-2:<ACCOUNT_ID>:loadbalancer/app/arcfoundry-alb/xxx
 
 # Create rule for forge-intent-api.arcfoundry.ai
 aws elbv2 create-rule \
-  --listener-arn arn:aws:elasticloadbalancing:us-east-1:<ACCOUNT_ID>:listener/app/arcfoundry-alb/xxx/yyy \
+  --listener-arn arn:aws:elasticloadbalancing:us-west-2:<ACCOUNT_ID>:listener/app/arcfoundry-alb/xxx/yyy \
   --priority 20 \
   --conditions Field=host-header,Values=forge-intent-api.arcfoundry.ai \
-  --actions Type=forward,TargetGroupArn=arn:aws:elasticloadbalancing:us-east-1:<ACCOUNT_ID>:targetgroup/forge-intent-tg/xxx
+  --actions Type=forward,TargetGroupArn=arn:aws:elasticloadbalancing:us-west-2:<ACCOUNT_ID>:targetgroup/forge-intent-tg/xxx
 ```
 
 ### 1.11 Create Route53 DNS Record
@@ -260,7 +260,7 @@ aws route53 change-resource-record-sets \
         "Type": "A",
         "AliasTarget": {
           "HostedZoneId": "Z35SXDOTRQ7X7K",
-          "DNSName": "arcfoundry-alb-xxx.us-east-1.elb.amazonaws.com",
+          "DNSName": "arcfoundry-alb-xxx.us-west-2.elb.amazonaws.com",
           "EvaluateTargetHealth": true
         }
       }
@@ -352,8 +352,8 @@ docker build -t forge-intent-engine:latest .
 
 # 2. Push to ECR
 docker tag forge-intent-engine:latest \
-  <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/forge-intent-engine:latest
-docker push <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/forge-intent-engine:latest
+  <ACCOUNT_ID>.dkr.ecr.us-west-2.amazonaws.com/forge-intent-engine:latest
+docker push <ACCOUNT_ID>.dkr.ecr.us-west-2.amazonaws.com/forge-intent-engine:latest
 
 # 3. Force new deployment
 aws ecs update-service \

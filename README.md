@@ -135,7 +135,7 @@ Add to the existing ECS task role:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `AWS_REGION` | AWS region | `us-east-1` |
+| `AWS_REGION` | AWS region | `us-west-2` |
 | `S3_BUCKET` | S3 bucket name | `arcfoundry-context` |
 | `S3_PREFIX` | Prefix for intent data | `forge-intent` |
 | `PORT` | HTTP server port | `3001` |
@@ -216,8 +216,8 @@ case 'interview_get_session':
 # Build and push Docker image
 docker build -t arcfoundry-context-mcp .
 docker tag arcfoundry-context-mcp:latest \
-  <AWS_ACCOUNT>.dkr.ecr.us-east-1.amazonaws.com/arcfoundry-context-mcp:latest
-docker push <AWS_ACCOUNT>.dkr.ecr.us-east-1.amazonaws.com/arcfoundry-context-mcp:latest
+  <AWS_ACCOUNT>.dkr.ecr.us-west-2.amazonaws.com/arcfoundry-context-mcp:latest
+docker push <AWS_ACCOUNT>.dkr.ecr.us-west-2.amazonaws.com/arcfoundry-context-mcp:latest
 
 # Update ECS service
 aws ecs update-service \
@@ -252,12 +252,12 @@ npm run build
 # Docker
 docker build -t forge-intent-engine .
 docker tag forge-intent-engine:latest \
-  <AWS_ACCOUNT>.dkr.ecr.us-east-1.amazonaws.com/forge-intent-engine:latest
+  <AWS_ACCOUNT>.dkr.ecr.us-west-2.amazonaws.com/forge-intent-engine:latest
 
 # Push
-aws ecr get-login-password --region us-east-1 | \
-  docker login --username AWS --password-stdin <AWS_ACCOUNT>.dkr.ecr.us-east-1.amazonaws.com
-docker push <AWS_ACCOUNT>.dkr.ecr.us-east-1.amazonaws.com/forge-intent-engine:latest
+aws ecr get-login-password --region us-west-2 | \
+  docker login --username AWS --password-stdin <AWS_ACCOUNT>.dkr.ecr.us-west-2.amazonaws.com
+docker push <AWS_ACCOUNT>.dkr.ecr.us-west-2.amazonaws.com/forge-intent-engine:latest
 ```
 
 #### Step 3: Create ECS Task Definition
@@ -274,7 +274,7 @@ docker push <AWS_ACCOUNT>.dkr.ecr.us-east-1.amazonaws.com/forge-intent-engine:la
   "containerDefinitions": [
     {
       "name": "forge-intent-engine",
-      "image": "<AWS_ACCOUNT>.dkr.ecr.us-east-1.amazonaws.com/forge-intent-engine:latest",
+      "image": "<AWS_ACCOUNT>.dkr.ecr.us-west-2.amazonaws.com/forge-intent-engine:latest",
       "essential": true,
       "portMappings": [
         {
@@ -283,7 +283,7 @@ docker push <AWS_ACCOUNT>.dkr.ecr.us-east-1.amazonaws.com/forge-intent-engine:la
         }
       ],
       "environment": [
-        { "name": "AWS_REGION", "value": "us-east-1" },
+        { "name": "AWS_REGION", "value": "us-west-2" },
         { "name": "S3_BUCKET", "value": "arcfoundry-context" },
         { "name": "S3_PREFIX", "value": "forge-intent" },
         { "name": "PORT", "value": "3001" }
@@ -291,14 +291,14 @@ docker push <AWS_ACCOUNT>.dkr.ecr.us-east-1.amazonaws.com/forge-intent-engine:la
       "secrets": [
         {
           "name": "GITHUB_TOKEN",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:<AWS_ACCOUNT>:secret:forge-intent/github-token"
+          "valueFrom": "arn:aws:secretsmanager:us-west-2:<AWS_ACCOUNT>:secret:forge-intent/github-token"
         }
       ],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
           "awslogs-group": "/ecs/forge-intent-engine",
-          "awslogs-region": "us-east-1",
+          "awslogs-region": "us-west-2",
           "awslogs-stream-prefix": "ecs"
         }
       }
@@ -317,7 +317,7 @@ aws ecs create-service \
   --desired-count 2 \
   --launch-type FARGATE \
   --network-configuration "awsvpcConfiguration={subnets=[subnet-xxx,subnet-yyy],securityGroups=[sg-xxx],assignPublicIp=DISABLED}" \
-  --load-balancers "targetGroupArn=arn:aws:elasticloadbalancing:us-east-1:<AWS_ACCOUNT>:targetgroup/forge-intent-tg/xxx,containerName=forge-intent-engine,containerPort=3001"
+  --load-balancers "targetGroupArn=arn:aws:elasticloadbalancing:us-west-2:<AWS_ACCOUNT>:targetgroup/forge-intent-tg/xxx,containerName=forge-intent-engine,containerPort=3001"
 ```
 
 #### Step 5: Configure ALB
@@ -326,10 +326,10 @@ Add listener rule to existing ALB:
 
 ```bash
 aws elbv2 create-rule \
-  --listener-arn arn:aws:elasticloadbalancing:us-east-1:<AWS_ACCOUNT>:listener/app/arcfoundry-alb/xxx/yyy \
+  --listener-arn arn:aws:elasticloadbalancing:us-west-2:<AWS_ACCOUNT>:listener/app/arcfoundry-alb/xxx/yyy \
   --priority 20 \
   --conditions Field=host-header,Values="forge-intent-api.arcfoundry.ai" \
-  --actions Type=forward,TargetGroupArn=arn:aws:elasticloadbalancing:us-east-1:<AWS_ACCOUNT>:targetgroup/forge-intent-tg/xxx
+  --actions Type=forward,TargetGroupArn=arn:aws:elasticloadbalancing:us-west-2:<AWS_ACCOUNT>:targetgroup/forge-intent-tg/xxx
 ```
 
 #### Step 6: Add Route53 Record
@@ -345,7 +345,7 @@ aws route53 change-resource-record-sets \
         "Type": "A",
         "AliasTarget": {
           "HostedZoneId": "Z35SXDOTRQ7X7K",
-          "DNSName": "arcfoundry-alb-xxx.us-east-1.elb.amazonaws.com",
+          "DNSName": "arcfoundry-alb-xxx.us-west-2.elb.amazonaws.com",
           "EvaluateTargetHealth": true
         }
       }

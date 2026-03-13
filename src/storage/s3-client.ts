@@ -24,7 +24,7 @@ const PREFIX = 'forge-intent';
 export class ForgeIntentS3Client {
   private s3: S3Client;
 
-  constructor(region: string = 'us-east-1') {
+  constructor(region: string = 'us-west-2') {
     this.s3 = new S3Client({ region });
   }
 
