@@ -26,6 +26,7 @@ import {
   analyzeProject,
 } from './handlers/analysis-handlers.js';
 import { handoff, terminate } from './handlers/lifecycle-handlers.js';
+import { registerOpenClawRoutes } from './handlers/openclaw-callback-handler.js';
 
 const app = express();
 app.use(cors());
@@ -307,6 +308,12 @@ app.post('/api/mcp/execute', async (req, res) => {
     res.status(500).json({ error: String(error) });
   }
 });
+
+// ─────────────────────────────────────────────────────────────
+// OpenClaw Callback Routes
+// ─────────────────────────────────────────────────────────────
+
+registerOpenClawRoutes(app);
 
 // ─────────────────────────────────────────────────────────────
 // Start Server

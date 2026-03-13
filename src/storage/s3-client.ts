@@ -19,6 +19,7 @@ import type {
 } from '../types.js';
 
 const BUCKET_NAME = process.env.S3_BUCKET || 'arcfoundry-context';
+const INTERVIEW_DATA_BUCKET = process.env.S3_INTERVIEW_BUCKET || 'arcfoundry-interview-data';
 const PREFIX = 'forge-intent';
 
 export class ForgeIntentS3Client {
@@ -313,6 +314,52 @@ export class ForgeIntentS3Client {
     } catch {
       return null;
     }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Generic Object Operations (for interview data)
+  // ─────────────────────────────────────────────────────────────
+
+  async putObject(
+    key: string,
+    data: unknown,
+    contentType: string = 'application/json'
+  ): Promise<void> {
+    const body =
+      contentType === 'application/json'
+        ? JSON.stringify(data, null, 2)
+        : String(data);
+
+    await this.s3.send(
+      new PutObjectCommand({
+        Bucket: INTERVIEW_DATA_BUCKET,
+        Key: key,
+        Body: body,
+        ContentType: contentType,
+      })
+    );
+  }
+
+  async getObject(key: string): Promise<string | null> {
+    try {
+      const response = await this.s3.send(
+        new GetObjectCommand({
+          Bucket: INTERVIEW_DATA_BUCKET,
+          Key: key,
+        })
+      );
+      return (await response.Body?.transformToString()) || null;
+    } catch (error: unknown) {
+      if ((error as { name?: string }).name === 'NoSuchKey') {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  async getObjectJson<T>(key: string): Promise<T | null> {
+    const body = await this.getObject(key);
+    return body ? JSON.parse(body) : null;
   }
 
   // ─────────────────────────────────────────────────────────────
