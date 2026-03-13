@@ -12,6 +12,13 @@
     .card-gradient {
       background: linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
     }
+    .demo-badge {
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
   </style>
 </head>
 <body class="gradient-bg min-h-screen text-white">
@@ -20,6 +27,11 @@
     <header class="text-center mb-12">
       <h1 class="text-4xl font-bold mb-2">Forge Intent Portal</h1>
       <p class="text-indigo-200">AI-Powered Root Cause Discovery</p>
+      <div id="mode-badge" class="mt-2 hidden">
+        <span class="demo-badge inline-block px-3 py-1 bg-yellow-500/20 border border-yellow-500/50 text-yellow-200 rounded-full text-sm">
+          Demo Mode — Using Simulated Data
+        </span>
+      </div>
     </header>
 
     <!-- Main Content -->
@@ -129,18 +141,221 @@
         </button>
       </div>
     </main>
+
+    <!-- Footer -->
+    <footer class="mt-12 text-center text-indigo-300 text-sm">
+      <p>Powered by Forge Intent Engine • ArcFoundry</p>
+    </footer>
   </div>
 
   <script>
+    // ─────────────────────────────────────────────────────────────
     // Configuration
-    const API_BASE = window.location.hostname === 'localhost'
-      ? 'http://localhost:3001/api'
-      : 'https://forge-intent-api.arcfoundry.ai/api'; // Production API
+    // ─────────────────────────────────────────────────────────────
 
+    const API_ENDPOINTS = [
+      'http://localhost:3001/api',                    // Local development
+      'https://forge-intent-api.arcfoundry.ai/api',   // Production API
+    ];
+
+    let API_BASE = null;
+    let DEMO_MODE = false;
     let currentSession = null;
     let currentQuestions = [];
+    let demoRound = 1;
 
+    // ─────────────────────────────────────────────────────────────
+    // Demo Mode Data — CDM Interview Questions
+    // ─────────────────────────────────────────────────────────────
+
+    const CDM_QUESTIONS = {
+      round1: [
+        {
+          questionId: 'cdm-r1-q1',
+          questionText: 'Tell me about a recent incident or challenge in this domain. What happened?',
+        },
+        {
+          questionId: 'cdm-r1-q2',
+          questionText: 'What was your role in this situation? Walk me through what you observed.',
+        },
+        {
+          questionId: 'cdm-r1-q3',
+          questionText: 'What decisions did you or your team make? What information did you rely on?',
+        },
+      ],
+      round2: [
+        {
+          questionId: 'cdm-r2-q1',
+          questionText: 'Looking back, what signals or patterns do you now recognize that you might have missed initially?',
+        },
+        {
+          questionId: 'cdm-r2-q2',
+          questionText: 'Were there any assumptions that turned out to be wrong? What would you do differently?',
+        },
+        {
+          questionId: 'cdm-r2-q3',
+          questionText: 'If a new team member faced this same situation, what would you want them to know?',
+        },
+      ],
+      round3: [
+        {
+          questionId: 'cdm-r3-q1',
+          questionText: 'Based on our discussion, which of these root causes resonates most with you?',
+        },
+        {
+          questionId: 'cdm-r3-q2',
+          questionText: 'What evidence from your experience supports or contradicts this hypothesis?',
+        },
+        {
+          questionId: 'cdm-r3-q3',
+          questionText: 'What would need to change to prevent this type of issue in the future?',
+        },
+      ],
+    };
+
+    const HYPOTHESES = [
+      'process_gaps',
+      'tooling_limitations',
+      'communication_breakdown',
+      'knowledge_silos',
+      'resource_constraints',
+    ];
+
+    // ─────────────────────────────────────────────────────────────
+    // API Connectivity Check
+    // ─────────────────────────────────────────────────────────────
+
+    async function checkApiConnectivity() {
+      for (const endpoint of API_ENDPOINTS) {
+        try {
+          const response = await fetch(`${endpoint.replace('/api', '')}/health`, {
+            method: 'GET',
+            signal: AbortSignal.timeout(3000),
+          });
+          if (response.ok) {
+            API_BASE = endpoint;
+            console.log(`Connected to API: ${endpoint}`);
+            return true;
+          }
+        } catch (e) {
+          console.log(`API not available at ${endpoint}`);
+        }
+      }
+      return false;
+    }
+
+    async function initializeMode() {
+      const apiAvailable = await checkApiConnectivity();
+      if (!apiAvailable) {
+        DEMO_MODE = true;
+        document.getElementById('mode-badge').classList.remove('hidden');
+        console.log('Running in Demo Mode with simulated data');
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Demo Mode Simulation Functions
+    // ─────────────────────────────────────────────────────────────
+
+    function generateSessionId() {
+      return 'sess-demo-' + Math.random().toString(36).substring(2, 10);
+    }
+
+    function simulatePosteriors(round) {
+      const posteriors = {};
+      let remaining = 1.0;
+
+      // Simulate convergence over rounds
+      const dominantWeight = 0.2 + (round * 0.2); // Increases each round
+      const dominant = HYPOTHESES[Math.floor(Math.random() * HYPOTHESES.length)];
+
+      HYPOTHESES.forEach((h, i) => {
+        if (h === dominant) {
+          posteriors[h] = Math.min(dominantWeight + (Math.random() * 0.1), 0.95);
+        } else {
+          posteriors[h] = Math.random() * (1 - dominantWeight) / (HYPOTHESES.length - 1);
+        }
+      });
+
+      // Normalize
+      const total = Object.values(posteriors).reduce((a, b) => a + b, 0);
+      Object.keys(posteriors).forEach(k => posteriors[k] = posteriors[k] / total);
+
+      return posteriors;
+    }
+
+    function simulateBayesianUpdate(responses, currentPosteriors) {
+      const posteriors = { ...currentPosteriors };
+
+      // Simulate Bayesian update based on response length/quality
+      const totalLength = responses.reduce((sum, r) => sum + r.response.length, 0);
+      const boost = Math.min(totalLength / 1000, 0.15);
+
+      // Find current dominant and boost it
+      const sorted = Object.entries(posteriors).sort((a, b) => b[1] - a[1]);
+      const dominant = sorted[0][0];
+
+      posteriors[dominant] = Math.min(posteriors[dominant] + boost, 0.95);
+
+      // Normalize
+      const total = Object.values(posteriors).reduce((a, b) => a + b, 0);
+      Object.keys(posteriors).forEach(k => posteriors[k] = posteriors[k] / total);
+
+      const dominantPosterior = Math.max(...Object.values(posteriors));
+      const convergenceReached = dominantPosterior >= 0.85;
+
+      return {
+        posteriors,
+        dominantHypothesis: Object.entries(posteriors).find(([_, v]) => v === dominantPosterior)[0],
+        dominantPosterior,
+        convergenceReached,
+        recommendation: convergenceReached
+          ? 'Root cause identified with high confidence. Ready for report generation.'
+          : 'Continue interview to gather more evidence.',
+      };
+    }
+
+    function getDemoQuestions(round) {
+      if (round === 1) return CDM_QUESTIONS.round1;
+      if (round === 2) return CDM_QUESTIONS.round2;
+      return CDM_QUESTIONS.round3;
+    }
+
+    function generateDemoReport(hypothesis) {
+      const reports = {
+        process_gaps: [
+          { title: 'Document Critical Processes', description: 'Create runbooks for high-impact workflows', category: 'Process', priority: 'HIGH' },
+          { title: 'Implement Checkpoints', description: 'Add verification steps at key decision points', category: 'Process', priority: 'MEDIUM' },
+          { title: 'Regular Process Reviews', description: 'Schedule quarterly process audits', category: 'Governance', priority: 'MEDIUM' },
+        ],
+        tooling_limitations: [
+          { title: 'Tool Evaluation', description: 'Assess current tooling gaps and alternatives', category: 'Tooling', priority: 'HIGH' },
+          { title: 'Automation Opportunities', description: 'Identify manual tasks that could be automated', category: 'Efficiency', priority: 'HIGH' },
+          { title: 'Integration Improvements', description: 'Improve data flow between existing tools', category: 'Tooling', priority: 'MEDIUM' },
+        ],
+        communication_breakdown: [
+          { title: 'Establish Clear Channels', description: 'Define communication protocols for different scenarios', category: 'Communication', priority: 'HIGH' },
+          { title: 'Regular Sync Meetings', description: 'Implement structured cross-team syncs', category: 'Collaboration', priority: 'MEDIUM' },
+          { title: 'Documentation Standards', description: 'Create templates for decision documentation', category: 'Communication', priority: 'MEDIUM' },
+        ],
+        knowledge_silos: [
+          { title: 'Knowledge Sharing Sessions', description: 'Regular brown bag sessions across teams', category: 'Knowledge', priority: 'HIGH' },
+          { title: 'Cross-Training Program', description: 'Implement rotation or shadowing programs', category: 'Training', priority: 'MEDIUM' },
+          { title: 'Central Documentation', description: 'Create searchable knowledge base', category: 'Knowledge', priority: 'HIGH' },
+        ],
+        resource_constraints: [
+          { title: 'Resource Planning', description: 'Improve forecasting and capacity planning', category: 'Resources', priority: 'HIGH' },
+          { title: 'Priority Framework', description: 'Clear criteria for resource allocation decisions', category: 'Governance', priority: 'HIGH' },
+          { title: 'Efficiency Analysis', description: 'Identify bottlenecks and optimization opportunities', category: 'Operations', priority: 'MEDIUM' },
+        ],
+      };
+      return reports[hypothesis] || reports.process_gaps;
+    }
+
+    // ─────────────────────────────────────────────────────────────
     // DOM Elements
+    // ─────────────────────────────────────────────────────────────
+
     const landingView = document.getElementById('landing-view');
     const interviewView = document.getElementById('interview-view');
     const convergenceView = document.getElementById('convergence-view');
@@ -150,6 +365,10 @@
     const submitBtn = document.getElementById('submit-responses');
     const newSessionBtn = document.getElementById('new-session');
 
+    // ─────────────────────────────────────────────────────────────
+    // Event Handlers
+    // ─────────────────────────────────────────────────────────────
+
     // Start new session
     startForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -157,18 +376,35 @@
       const respondentDescription = document.getElementById('respondentDescription').value;
       const domainActivity = document.getElementById('domainActivity').value;
 
-      try {
-        const response = await fetch(`${API_BASE}/sessions`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ projectId, respondentDescription, domainActivity }),
-        });
-        const data = await response.json();
-        currentSession = { id: data.sessionId, projectId, respondentDescription, domainActivity };
-        await loadQuestions();
+      if (DEMO_MODE) {
+        // Demo mode: simulate session creation
+        currentSession = {
+          id: generateSessionId(),
+          projectId,
+          respondentDescription,
+          domainActivity,
+          posteriors: simulatePosteriors(1),
+        };
+        demoRound = 1;
+        currentQuestions = getDemoQuestions(1);
         showInterviewView();
-      } catch (error) {
-        alert('Failed to start session: ' + error.message);
+        renderQuestions();
+        updatePosteriors(currentSession.posteriors);
+      } else {
+        // Live mode: call API
+        try {
+          const response = await fetch(`${API_BASE}/sessions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ projectId, respondentDescription, domainActivity }),
+          });
+          const data = await response.json();
+          currentSession = { id: data.sessionId, projectId, respondentDescription, domainActivity };
+          await loadQuestions();
+          showInterviewView();
+        } catch (error) {
+          alert('Failed to start session: ' + error.message);
+        }
       }
     });
 
@@ -176,6 +412,11 @@
     resumeForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const sessionId = document.getElementById('resumeSessionId').value;
+
+      if (DEMO_MODE) {
+        alert('Demo mode: Cannot resume sessions. Please start a new interview.');
+        return;
+      }
 
       try {
         const response = await fetch(`${API_BASE}/sessions/${sessionId}`);
@@ -212,33 +453,59 @@
       submitBtn.disabled = true;
       submitBtn.textContent = 'Processing...';
 
-      try {
-        const response = await fetch(`${API_BASE}/sessions/${currentSession.id}/turn`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ responses }),
-        });
-        const data = await response.json();
+      if (DEMO_MODE) {
+        // Demo mode: simulate turn processing
+        await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate processing
 
-        updatePosteriors(data.bayesian.posteriors);
+        const bayesian = simulateBayesianUpdate(responses, currentSession.posteriors);
+        currentSession.posteriors = bayesian.posteriors;
 
-        if (data.bayesian.convergenceReached) {
+        updatePosteriors(bayesian.posteriors);
+
+        if (bayesian.convergenceReached || demoRound >= 3) {
+          currentSession.dominantHypothesis = bayesian.dominantHypothesis;
+          currentSession.dominantPosterior = bayesian.dominantPosterior;
           await showConvergenceView();
-        } else if (data.nextQuestions) {
-          currentQuestions = data.nextQuestions;
-          renderQuestions();
-          document.getElementById('round-number').textContent =
-            parseInt(document.getElementById('round-number').textContent) + 1;
-          updateProgress();
         } else {
-          // Max rounds reached
-          await showConvergenceView();
+          demoRound++;
+          currentQuestions = getDemoQuestions(demoRound);
+          renderQuestions();
+          document.getElementById('round-number').textContent = demoRound;
+          updateProgress();
         }
-      } catch (error) {
-        alert('Failed to submit responses: ' + error.message);
-      } finally {
+
         submitBtn.disabled = false;
         submitBtn.textContent = 'Submit Responses';
+      } else {
+        // Live mode: call API
+        try {
+          const response = await fetch(`${API_BASE}/sessions/${currentSession.id}/turn`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ responses }),
+          });
+          const data = await response.json();
+
+          updatePosteriors(data.bayesian.posteriors);
+
+          if (data.bayesian.convergenceReached) {
+            await showConvergenceView();
+          } else if (data.nextQuestions) {
+            currentQuestions = data.nextQuestions;
+            renderQuestions();
+            document.getElementById('round-number').textContent =
+              parseInt(document.getElementById('round-number').textContent) + 1;
+            updateProgress();
+          } else {
+            // Max rounds reached
+            await showConvergenceView();
+          }
+        } catch (error) {
+          alert('Failed to submit responses: ' + error.message);
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Submit Responses';
+        }
       }
     });
 
@@ -246,6 +513,7 @@
     newSessionBtn.addEventListener('click', () => {
       currentSession = null;
       currentQuestions = [];
+      demoRound = 1;
       landingView.classList.remove('hidden');
       interviewView.classList.add('hidden');
       convergenceView.classList.add('hidden');
@@ -253,7 +521,10 @@
       resumeForm.reset();
     });
 
-    // Helper functions
+    // ─────────────────────────────────────────────────────────────
+    // Helper Functions
+    // ─────────────────────────────────────────────────────────────
+
     async function loadQuestions() {
       const response = await fetch(`${API_BASE}/sessions/${currentSession.id}/questions`);
       const data = await response.json();
@@ -277,9 +548,9 @@
       const container = document.getElementById('posteriors-bars');
       const sorted = Object.entries(posteriors).sort((a, b) => b[1] - a[1]);
 
-      container.innerHTML = sorted.slice(0, 3).map(([hyp, value]) => `
+      container.innerHTML = sorted.slice(0, 5).map(([hyp, value]) => `
         <div class="flex items-center gap-3">
-          <div class="w-32 text-sm truncate">${formatHypothesis(hyp)}</div>
+          <div class="w-40 text-sm truncate">${formatHypothesis(hyp)}</div>
           <div class="flex-1 bg-white/10 rounded-full h-3">
             <div class="bg-indigo-500 h-3 rounded-full transition-all" style="width: ${value * 100}%"></div>
           </div>
@@ -311,34 +582,58 @@
       interviewView.classList.add('hidden');
       convergenceView.classList.remove('hidden');
 
-      // Load session data
-      const sessionRes = await fetch(`${API_BASE}/sessions/${currentSession.id}`);
-      const session = await sessionRes.json();
+      if (DEMO_MODE) {
+        // Demo mode: use simulated data
+        const hypothesis = currentSession.dominantHypothesis || 'process_gaps';
+        const confidence = currentSession.dominantPosterior || 0.87;
 
-      document.getElementById('convergence-hypothesis').textContent =
-        formatHypothesis(session.dominantHypothesis || 'Unknown');
-      document.getElementById('convergence-confidence').textContent =
-        `${Math.round((session.dominantPosterior || 0) * 100)}%`;
+        document.getElementById('convergence-hypothesis').textContent = formatHypothesis(hypothesis);
+        document.getElementById('convergence-confidence').textContent = `${Math.round(confidence * 100)}%`;
 
-      // Generate report
-      try {
-        const reportRes = await fetch(`${API_BASE}/sessions/${currentSession.id}/report`, {
-          method: 'POST',
-        });
-        const report = await reportRes.json();
-
+        const recommendations = generateDemoReport(hypothesis);
         const recList = document.getElementById('recommendations-list');
-        recList.innerHTML = (report.recommendations || []).map(rec => `
+        recList.innerHTML = recommendations.map(rec => `
           <div class="p-3 bg-white/5 rounded-lg">
             <div class="font-medium">${rec.title}</div>
             <div class="text-sm text-indigo-200">${rec.description}</div>
             <div class="text-xs text-indigo-300 mt-1">${rec.category} • ${rec.priority} priority</div>
           </div>
         `).join('');
-      } catch (error) {
-        console.error('Failed to generate report:', error);
+      } else {
+        // Live mode: fetch from API
+        const sessionRes = await fetch(`${API_BASE}/sessions/${currentSession.id}`);
+        const session = await sessionRes.json();
+
+        document.getElementById('convergence-hypothesis').textContent =
+          formatHypothesis(session.dominantHypothesis || 'Unknown');
+        document.getElementById('convergence-confidence').textContent =
+          `${Math.round((session.dominantPosterior || 0) * 100)}%`;
+
+        try {
+          const reportRes = await fetch(`${API_BASE}/sessions/${currentSession.id}/report`, {
+            method: 'POST',
+          });
+          const report = await reportRes.json();
+
+          const recList = document.getElementById('recommendations-list');
+          recList.innerHTML = (report.recommendations || []).map(rec => `
+            <div class="p-3 bg-white/5 rounded-lg">
+              <div class="font-medium">${rec.title}</div>
+              <div class="text-sm text-indigo-200">${rec.description}</div>
+              <div class="text-xs text-indigo-300 mt-1">${rec.category} • ${rec.priority} priority</div>
+            </div>
+          `).join('');
+        } catch (error) {
+          console.error('Failed to generate report:', error);
+        }
       }
     }
+
+    // ─────────────────────────────────────────────────────────────
+    // Initialize
+    // ─────────────────────────────────────────────────────────────
+
+    initializeMode();
   </script>
 </body>
 </html>
