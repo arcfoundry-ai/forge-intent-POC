@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forge Intent Platform Strategy - Consolidated View</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --purple: #8b5cf6;
+            --pink: #ec4899;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+            min-height: 100vh;
+            color: var(--gray-800);
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1.5rem 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 1.75rem;
+            color: var(--gray-900);
+            margin-bottom: 0.25rem;
+        }
+
+        .header .subtitle {
+            color: var(--gray-600);
+            font-size: 0.9rem;
+        }
+
+        .header .status-badge {
+            display: inline-block;
+            background: var(--warning);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 1rem;
+            vertical-align: middle;
+        }
+
+        .tabs-container {
+            background: rgba(255, 255, 255, 0.9);
+            border-bottom: 1px solid var(--gray-200);
+            padding: 0 2rem;
+            display: flex;
+            gap: 0;
+            overflow-x: auto;
+        }
+
+        .tab {
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--gray-600);
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .tab:hover {
+            color: var(--primary);
+            background: var(--gray-50);
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            background: white;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 2rem;
+            background: var(--gray-50);
+            min-height: calc(100vh - 180px);
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card h2 {
+            font-size: 1.25rem;
+            color: var(--gray-900);
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--gray-100);
+        }
+
+        .card h3 {
+            font-size: 1rem;
+            color: var(--gray-800);
+            margin: 1rem 0 0.5rem;
+        }
+
+        .insight-box {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--purple) 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.875rem;
+        }
+
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        th {
+            background: var(--gray-50);
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+
+        tr:hover {
+            background: var(--gray-50);
+        }
+
+        .status-pill {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-draft { background: #fef3c7; color: #92400e; }
+        .status-updated { background: #dbeafe; color: #1e40af; }
+        .status-new { background: #dcfce7; color: #166534; }
+        .status-complete { background: #d1fae5; color: #065f46; }
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-p0 { background: #fee2e2; color: #991b1b; }
+        .status-p1 { background: #fef3c7; color: #92400e; }
+
+        .covenant-card {
+            border-left: 4px solid var(--primary);
+            padding: 1rem 1.5rem;
+            margin: 1rem 0;
+            background: var(--gray-50);
+            border-radius: 0 8px 8px 0;
+        }
+
+        .covenant-card h4 {
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .phase-timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .phase-item {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+        }
+
+        .phase-marker {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .phase-a { background: var(--success); }
+        .phase-a-platform { background: var(--warning); }
+        .phase-b { background: var(--success); }
+        .phase-c { background: var(--primary); }
+        .phase-d { background: var(--purple); }
+        .phase-e { background: var(--pink); }
+
+        .phase-content {
+            flex: 1;
+            padding: 0.5rem 0;
+        }
+
+        .phase-content h4 {
+            margin-bottom: 0.25rem;
+        }
+
+        .phase-content p {
+            color: var(--gray-600);
+            font-size: 0.875rem;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, var(--gray-800) 0%, var(--gray-900) 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-label {
+            color: var(--gray-300);
+            font-size: 0.875rem;
+        }
+
+        .savings { color: var(--success); }
+
+        .architecture-diagram {
+            background: var(--gray-900);
+            color: var(--gray-100);
+            padding: 1.5rem;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.8rem;
+            line-height: 1.4;
+            overflow-x: auto;
+            white-space: pre;
+        }
+
+        .checkbox-list {
+            list-style: none;
+        }
+
+        .checkbox-list li {
+            padding: 0.5rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .checkbox-list input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .pattern-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+
+        .pattern-card {
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            padding: 1rem;
+            background: white;
+        }
+
+        .pattern-card h4 {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .pattern-card p {
+            font-size: 0.85rem;
+            color: var(--gray-600);
+        }
+
+        .phase-badge {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .phase-badge.a { background: var(--warning); color: white; }
+        .phase-badge.b { background: var(--primary); color: white; }
+        .phase-badge.c { background: var(--purple); color: white; }
+        .phase-badge.d { background: var(--gray-400); color: white; }
+        .phase-badge.no { background: var(--gray-200); color: var(--gray-600); }
+
+        .cost-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 1.5rem 0;
+        }
+
+        .cost-box {
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .cost-box.before {
+            background: #fef2f2;
+            border: 2px solid #fecaca;
+        }
+
+        .cost-box.after {
+            background: #dcfce7;
+            border: 2px solid #86efac;
+        }
+
+        .cost-box h4 {
+            font-size: 0.875rem;
+            color: var(--gray-600);
+            margin-bottom: 0.5rem;
+        }
+
+        .cost-box .amount {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .cost-box.before .amount { color: var(--danger); }
+        .cost-box.after .amount { color: var(--success); }
+
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .nav-btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .nav-btn.primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .nav-btn.primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .nav-btn.secondary {
+            background: var(--gray-100);
+            color: var(--gray-700);
+        }
+
+        .nav-btn.secondary:hover {
+            background: var(--gray-200);
+        }
+
+        .print-btn {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--gray-800);
+            color: white;
+            border: none;
+            padding: 1rem 1.5rem;
+            border-radius: 9999px;
+            cursor: pointer;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 50;
+        }
+
+        .print-btn:hover {
+            background: var(--gray-900);
+        }
+
+        @media print {
+            .tabs-container, .print-btn, .nav-buttons { display: none; }
+            .tab-content { display: block !important; page-break-after: always; }
+            body { background: white; }
+            .header { position: static; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>
+            Forge Intent Platform Strategy
+            <span class="status-badge">DRAFT - PENDING APPROVAL</span>
+        </h1>
+        <p class="subtitle">TOM's Scope Expansion MAR 13 | Consolidated View for Analysis</p>
+    </div>
+
+    <div class="tabs-container">
+        <button class="tab active" data-tab="overview">Overview</button>
+        <button class="tab" data-tab="covenants">Platform Covenants</button>
+        <button class="tab" data-tab="architecture">Architecture</button>
+        <button class="tab" data-tab="roadmap">Roadmap</button>
+        <button class="tab" data-tab="patterns">Open Brain v2.0</button>
+        <button class="tab" data-tab="cost">Cost Analysis</button>
+        <button class="tab" data-tab="documents">Document Registry</button>
+        <button class="tab" data-tab="approval">Approval Checklist</button>
+    </div>
+
+    <!-- TAB 1: Overview -->
+    <div id="overview" class="tab-content active">
+        <div class="insight-box">
+            Context MCP is not Forge Intent's brain.<br>
+            <strong>Context MCP is ArcFoundry's platform intelligence substrate.</strong>
+        </div>
+
+        <div class="grid-2">
+            <div class="card">
+                <h2>Strategic Questions Answered</h2>
+                <table>
+                    <tr>
+                        <td><strong>20 products sharing ContextMCP</strong></td>
+                        <td>Single shared Context MCP with namespace isolation</td>
+                    </tr>
+                    <tr>
+                        <td><strong>iOS products calling ContextMCP + LLM</strong></td>
+                        <td>HTTP API Gateway required (MCP is server-to-server only)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Claude plugins ecosystem</strong></td>
+                        <td>Stay MCP; optional dashboard plugin later</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2>Impact Summary</h2>
+                <table>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Before</th>
+                        <th>After</th>
+                    </tr>
+                    <tr>
+                        <td>Open Brain patterns</td>
+                        <td>4</td>
+                        <td><strong>8</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Phase A priority items</td>
+                        <td>0</td>
+                        <td><strong>4</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Platform overhead</td>
+                        <td>$0</td>
+                        <td>+$75-100/mo</td>
+                    </tr>
+                    <tr>
+                        <td>Cost at 20 products</td>
+                        <td>~$5,000/mo</td>
+                        <td class="savings"><strong>~$550/mo</strong></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Key Decisions Made</h2>
+            <div class="grid-2">
+                <div class="covenant-card">
+                    <h4>Decision 1: Single Shared Context MCP</h4>
+                    <p>ONE Context MCP server with namespace isolation, NOT 20 separate instances. 10× cheaper at scale.</p>
+                </div>
+                <div class="covenant-card">
+                    <h4>Decision 2: HTTP API Gateway for iOS</h4>
+                    <p>Deploy at context-api.arcfoundry.ai for iOS/external access. MCP is server-to-server only.</p>
+                </div>
+                <div class="covenant-card">
+                    <h4>Decision 3: ADC Gateway as Deployment Gate</h4>
+                    <p>All agents must be registered in PostgreSQL ADC registry before accessing Context MCP.</p>
+                </div>
+                <div class="covenant-card">
+                    <h4>Decision 4: Platform Covenants</h4>
+                    <p>4 inviolable rules govern platform behavior: Data≠Context, Domain Isolation, Immutable Versions, Audit Everything.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="nav-buttons">
+            <span></span>
+            <button class="nav-btn primary" onclick="switchTab('covenants')">Next: Platform Covenants →</button>
+        </div>
+    </div>
+
+    <!-- TAB 2: Platform Covenants -->
+    <div id="covenants" class="tab-content">
+        <div class="card">
+            <h2>4 Inviolable Platform Rules</h2>
+            <p style="color: var(--gray-600); margin-bottom: 1.5rem;">These covenants govern all platform behavior and cannot be overridden by any product or agent.</p>
+
+            <div class="covenant-card" style="border-left-color: #ef4444;">
+                <h4>Covenant 1: Data ≠ Context</h4>
+                <p><strong>Rule:</strong> Product data (interview responses, user state) NEVER enters Context MCP storage.</p>
+                <p><strong>Enforcement:</strong> ADC Gateway blocks unauthorized writes. Violations logged to audit trail.</p>
+                <p><strong>Violation Response:</strong> BLOCK + ESCALATE</p>
+            </div>
+
+            <div class="covenant-card" style="border-left-color: #f59e0b;">
+                <h4>Covenant 2: Domain Isolation</h4>
+                <p><strong>Rule:</strong> Agents can only access domains explicitly permitted in their ADC.</p>
+                <p><strong>Enforcement:</strong> Per-agent domain permissions checked on every request.</p>
+                <p><strong>Violation Response:</strong> BLOCK + LOG</p>
+            </div>
+
+            <div class="covenant-card" style="border-left-color: #8b5cf6;">
+                <h4>Covenant 3: Immutable Methodology Versions</h4>
+                <p><strong>Rule:</strong> Published methodology versions (cold tier) are immutable. Updates create new versions.</p>
+                <p><strong>Enforcement:</strong> 409 Conflict on overwrite attempts.</p>
+                <p><strong>Violation Response:</strong> BLOCK</p>
+            </div>
+
+            <div class="covenant-card" style="border-left-color: #22c55e;">
+                <h4>Covenant 4: Audit Everything</h4>
+                <p><strong>Rule:</strong> All Context MCP operations logged to PostgreSQL with agent, domain, operation, timestamp.</p>
+                <p><strong>Enforcement:</strong> Middleware logs before routing. Missing audit = request fails.</p>
+                <p><strong>Violation Response:</strong> AUTO-ENFORCE</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Violation Response Matrix</h2>
+            <table>
+                <tr>
+                    <th>Response</th>
+                    <th>Action</th>
+                    <th>Notification</th>
+                </tr>
+                <tr>
+                    <td><span class="status-pill status-pending">WARN</span></td>
+                    <td>Log violation, allow request</td>
+                    <td>Weekly digest</td>
+                </tr>
+                <tr>
+                    <td><span class="status-pill status-p0">BLOCK</span></td>
+                    <td>Reject request with 403/409</td>
+                    <td>Immediate to agent owner</td>
+                </tr>
+                <tr>
+                    <td><span class="status-pill" style="background: #fce7f3; color: #9d174d;">ESCALATE</span></td>
+                    <td>Block + alert platform team</td>
+                    <td>Immediate to platform admins</td>
+                </tr>
+                <tr>
+                    <td><span class="status-pill" style="background: #fee2e2; color: #7f1d1d;">QUARANTINE</span></td>
+                    <td>Disable agent until manual review</td>
+                    <td>Immediate + incident ticket</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="nav-buttons">
+            <button class="nav-btn secondary" onclick="switchTab('overview')">← Previous</button>
+            <button class="nav-btn primary" onclick="switchTab('architecture')">Next: Architecture →</button>
+        </div>
+    </div>
+
+    <!-- TAB 3: Architecture -->
+    <div id="architecture" class="tab-content">
+        <div class="card">
+            <h2>Single Shared Context MCP Architecture</h2>
+            <div class="architecture-diagram">
+┌──────────────────────────────────────────────────────────────────────────┐
+│  SHARED Context MCP Server                                               │
+│  context.arcfoundry.ai (ECS Fargate 0.5 vCPU, 1GB)                      │
+│                                                                          │
+│  s3://arcfoundry-context/                                               │
+│  ├── forge-intent/hot/warm/cold/    (Product 1)                         │
+│  ├── forge-builder/hot/warm/cold/   (Product 2)                         │
+│  ├── forge-phoenix/hot/warm/cold/   (Product 3)                         │
+│  └── ... 20+ product namespaces                                         │
+│                                                                          │
+│  Version control: Single GitHub repo, all methodologies                 │
+│  Access: MCP protocol with domain parameter                             │
+└──────────────────────────────────────────────────────────────────────────┘</div>
+        </div>
+
+        <div class="card">
+            <h2>Three-Tier Platform Architecture</h2>
+            <div class="architecture-diagram">
+┌──────────────────────────────────────────────────────────────────────────┐
+│              Context MCP Platform                                        │
+├──────────────────────────────────────────────────────────────────────────┤
+│  TIER 1: API Gateway + ADC Validation                                   │
+│  • HTTP endpoint with domain + agent auth                               │
+│  • ADC validation gate (is this agent permitted?)                       │
+│  • Rate limiting per domain, per agent                                  │
+├──────────────────────────────────────────────────────────────────────────┤
+│  TIER 2: Multi-Domain Orchestration                                     │
+│  • Domain resolver (which bucket/table?)                                │
+│  • Cross-domain pattern search (with ACLs)                              │
+│  • Version manager (methodology editions)                               │
+├──────────────────────────────────────────────────────────────────────────┤
+│  TIER 3: Storage Abstraction                                            │
+│  • PostgreSQL: governance, audit, ACLs                                  │
+│  • S3: domain methodology, large objects                                │
+│  • DynamoDB: session caches (product-specific)                          │
+└──────────────────────────────────────────────────────────────────────────┘</div>
+        </div>
+
+        <div class="card">
+            <h2>iOS / Mobile Architecture</h2>
+            <div class="architecture-diagram">
+┌──────────────────────┐
+│   iOS App (Swift)    │
+└──────┬───────────────┘
+       │ HTTPS + JWT
+       ▼
+┌──────────────────────────────────────────┐
+│  HTTP API Gateway (ALB + Express)        │
+│  context-api.arcfoundry.ai               │
+│                                          │
+│  GET /v1/context/:domain/:tier/:topic    │
+│  POST /v1/search                         │
+│  POST /v1/llm/generate                   │
+└──────────────────────────────────────────┘
+       │
+       └─→ Context MCP (internal)</div>
+            <p style="margin-top: 1rem; color: var(--gray-600);">MCP is a server-to-server protocol. iOS apps cannot call MCP directly — HTTP API Gateway required.</p>
+        </div>
+
+        <div class="card">
+            <h2>ADC Gateway Flow</h2>
+            <div class="architecture-diagram">
+Agent Request
+    │
+    ├─→ 1. Extract agent_id from JWT
+    │
+    ├─→ 2. Lookup ADC in PostgreSQL
+    │
+    ├─→ 3. Validate request against ADC
+    │   • Is domain permitted?
+    │   • Is operation within boundaries?
+    │   • Are covenants satisfied?
+    │
+    ├─→ 4. Log to access_audit
+    │
+    └─→ 5. Route to Context MCP (or 403 Forbidden)</div>
+        </div>
+
+        <div class="nav-buttons">
+            <button class="nav-btn secondary" onclick="switchTab('covenants')">← Previous</button>
+            <button class="nav-btn primary" onclick="switchTab('roadmap')">Next: Roadmap →</button>
+        </div>
+    </div>
+
+    <!-- TAB 4: Roadmap -->
+    <div id="roadmap" class="tab-content">
+        <div class="card">
+            <h2>Revised Implementation Roadmap</h2>
+
+            <div class="phase-timeline">
+                <div class="phase-item">
+                    <div class="phase-marker phase-a">A</div>
+                    <div class="phase-content">
+                        <h4>Phase A: Documentation <span class="status-pill status-complete">COMPLETE</span></h4>
+                        <p>Recovery roadmap, curated content reconciliation</p>
+                    </div>
+                </div>
+
+                <div class="phase-item">
+                    <div class="phase-marker phase-b">B</div>
+                    <div class="phase-content">
+                        <h4>Phase B: Code Validation <span class="status-pill status-complete">COMPLETE</span></h4>
+                        <p>Gap analysis, divergence report, remediation backlog</p>
+                    </div>
+                </div>
+
+                <div class="phase-item">
+                    <div class="phase-marker phase-a-platform">A*</div>
+                    <div class="phase-content">
+                        <h4>Phase A-PLATFORM: Platform Infrastructure <span class="status-pill status-draft">NEW - P0</span></h4>
+                        <p><strong>BLOCKING:</strong> Must complete before Product #2</p>
+                    </div>
+                </div>
+
+                <div class="phase-item">
+                    <div class="phase-marker phase-c">C</div>
+                    <div class="phase-content">
+                        <h4>Phase C: Code Remediation + Platform Integration</h4>
+                        <p>Context MCP client, Claude API integration, ADC Gateway migration</p>
+                    </div>
+                </div>
+
+                <div class="phase-item">
+                    <div class="phase-marker phase-d">D</div>
+                    <div class="phase-content">
+                        <h4>Phase D: Phase 3-4 Design</h4>
+                        <p>Multi-domain readiness, execution telemetry, DC Node Lite</p>
+                    </div>
+                </div>
+
+                <div class="phase-item">
+                    <div class="phase-marker phase-e">E</div>
+                    <div class="phase-content">
+                        <h4>Phase E: iOS/Mobile Foundation <span class="status-pill status-new">NEW</span></h4>
+                        <p>HTTP API Gateway deployment, iOS SDK interface, OAuth2 flow</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Sprint 0: Platform Infrastructure (Phase A-PLATFORM)</h2>
+            <p style="color: var(--gray-600); margin-bottom: 1rem;"><strong>Timeline:</strong> Weeks 1-3 | <strong>Blocking:</strong> Must complete before Product #2</p>
+
+            <table>
+                <tr>
+                    <th>#</th>
+                    <th>Task</th>
+                    <th>Est</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                </tr>
+                <tr>
+                    <td>1</td>
+                    <td>Approve 12-Platform-Covenants.md</td>
+                    <td>—</td>
+                    <td><span class="status-pill status-p0">P0</span></td>
+                    <td><span class="status-pill status-draft">DRAFT</span></td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>Approve 13-Multi-Product-Architecture.md</td>
+                    <td>—</td>
+                    <td><span class="status-pill status-p0">P0</span></td>
+                    <td><span class="status-pill status-draft">DRAFT</span></td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td>Deploy PostgreSQL RDS</td>
+                    <td>1d</td>
+                    <td><span class="status-pill status-p0">P0</span></td>
+                    <td><span class="status-pill status-pending">PENDING</span></td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td>Create governance schema</td>
+                    <td>0.5d</td>
+                    <td><span class="status-pill status-p0">P0</span></td>
+                    <td><span class="status-pill status-pending">PENDING</span></td>
+                </tr>
+                <tr>
+                    <td>5</td>
+                    <td>Implement ADC Gateway</td>
+                    <td>2d</td>
+                    <td><span class="status-pill status-p0">P0</span></td>
+                    <td><span class="status-pill status-pending">PENDING</span></td>
+                </tr>
+                <tr>
+                    <td>6</td>
+                    <td>Register Forge Intent ADC</td>
+                    <td>0.5d</td>
+                    <td><span class="status-pill status-p0">P0</span></td>
+                    <td><span class="status-pill status-pending">PENDING</span></td>
+                </tr>
+                <tr>
+                    <td>7</td>
+                    <td>Implement Circuit Breaker</td>
+                    <td>1d</td>
+                    <td><span class="status-pill status-p1">P1</span></td>
+                    <td><span class="status-pill status-pending">PENDING</span></td>
+                </tr>
+                <tr>
+                    <td>8</td>
+                    <td>Deploy HTTP API Gateway</td>
+                    <td>1d</td>
+                    <td><span class="status-pill status-p0">P0</span></td>
+                    <td><span class="status-pill status-pending">PENDING</span></td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="nav-buttons">
+            <button class="nav-btn secondary" onclick="switchTab('architecture')">← Previous</button>
+            <button class="nav-btn primary" onclick="switchTab('patterns')">Next: Open Brain v2.0 →</button>
+        </div>
+    </div>
+
+    <!-- TAB 5: Open Brain Patterns -->
+    <div id="patterns" class="tab-content">
+        <div class="card">
+            <h2>Open Brain Adoption v2.0 — Platform Scale</h2>
+            <p style="color: var(--gray-600); margin-bottom: 1rem;">8 patterns adopted (up from 4). 4 patterns moved to Phase A.</p>
+
+            <h3>Phase A Patterns (NEW — BEFORE Product #2)</h3>
+            <div class="pattern-grid">
+                <div class="pattern-card">
+                    <h4>PostgreSQL Governance <span class="phase-badge a">PHASE A</span></h4>
+                    <p>Multi-tenant ACLs, ADC registry, audit logs. Required for platform governance.</p>
+                </div>
+                <div class="pattern-card">
+                    <h4>ADC Gateway <span class="phase-badge a">PHASE A</span></h4>
+                    <p>Deployment gate for all agents. Machine-enforceable role boundaries.</p>
+                </div>
+                <div class="pattern-card">
+                    <h4>HTTP API Gateway <span class="phase-badge a">PHASE A</span></h4>
+                    <p>iOS products require HTTP, not MCP. context-api.arcfoundry.ai</p>
+                </div>
+                <div class="pattern-card">
+                    <h4>Circuit Breaker <span class="phase-badge a">PHASE A</span></h4>
+                    <p>Multi-tenant quota protection. Per-agent, per-domain limits.</p>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 2rem;">Phase B Patterns</h3>
+            <div class="pattern-grid">
+                <div class="pattern-card">
+                    <h4>Cross-Domain Search <span class="phase-badge b">PHASE B</span></h4>
+                    <p>Pattern sharing with ADC-controlled ACLs across product domains.</p>
+                </div>
+                <div class="pattern-card">
+                    <h4>Execution Telemetry <span class="phase-badge b">PHASE B</span></h4>
+                    <p>Platform-wide observability. Token consumption, latency, errors.</p>
+                </div>
+                <div class="pattern-card">
+                    <h4>Double-Check Node <span class="phase-badge b">PHASE B</span></h4>
+                    <p>Per-operation governance. Validation hooks for high-risk operations.</p>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 2rem;">Phase C-D Patterns (Unchanged)</h3>
+            <div class="pattern-grid">
+                <div class="pattern-card">
+                    <h4>Execution Rationale Logging <span class="phase-badge c">PHASE C</span></h4>
+                    <p>Per-product forensics in S3. Methodology version tracking.</p>
+                </div>
+                <div class="pattern-card">
+                    <h4>DC Node Lite <span class="phase-badge d">PHASE D</span></h4>
+                    <p>Convergence validation. Pre-commit automation checks.</p>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 2rem;">Patterns Still NO</h3>
+            <div class="pattern-grid">
+                <div class="pattern-card">
+                    <h4>JIT Agent Provisioning <span class="phase-badge no">NO</span></h4>
+                    <p>Agents are registered via ADC, not spawned dynamically.</p>
+                </div>
+                <div class="pattern-card">
+                    <h4>Micro-UI Generation <span class="phase-badge no">NO</span></h4>
+                    <p>Incompatible with Cognito auth model.</p>
+                </div>
+                <div class="pattern-card">
+                    <h4>Cross-Category Reasoning <span class="phase-badge no">NO</span></h4>
+                    <p>Violates CDM discipline per domain.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="nav-buttons">
+            <button class="nav-btn secondary" onclick="switchTab('roadmap')">← Previous</button>
+            <button class="nav-btn primary" onclick="switchTab('cost')">Next: Cost Analysis →</button>
+        </div>
+    </div>
+
+    <!-- TAB 6: Cost Analysis -->
+    <div id="cost" class="tab-content">
+        <div class="grid-2">
+            <div class="metric-card">
+                <div class="metric-value savings">89%</div>
+                <div class="metric-label">Cost Savings at 20 Products</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">$4,450</div>
+                <div class="metric-label">Monthly Savings vs Separate Instances</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Cost Comparison: Single vs 20 Separate</h2>
+            <div class="cost-comparison">
+                <div class="cost-box before">
+                    <h4>20 Separate Instances</h4>
+                    <div class="amount">~$5,000/mo</div>
+                    <p style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--gray-600);">$250/product × 20</p>
+                </div>
+                <div class="cost-box after">
+                    <h4>Single Shared (Proposed)</h4>
+                    <div class="amount">~$550/mo</div>
+                    <p style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--gray-600);">$27/product × 20</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Platform Overhead (Shared Across 20 Products)</h2>
+            <table>
+                <tr>
+                    <th>Component</th>
+                    <th>Monthly Cost</th>
+                </tr>
+                <tr>
+                    <td>PostgreSQL RDS (db.t3.micro)</td>
+                    <td>$20-50</td>
+                </tr>
+                <tr>
+                    <td>HTTP API Gateway (ALB)</td>
+                    <td>$20</td>
+                </tr>
+                <tr>
+                    <td>Audit logging</td>
+                    <td>$10</td>
+                </tr>
+                <tr style="font-weight: 600; background: var(--gray-50);">
+                    <td>Platform Total</td>
+                    <td>$75-100/mo</td>
+                </tr>
+            </table>
+
+            <h3>Per-Product Allocation</h3>
+            <table>
+                <tr>
+                    <th>Products</th>
+                    <th>Per-Product Share</th>
+                </tr>
+                <tr>
+                    <td>1 product</td>
+                    <td>$75-100</td>
+                </tr>
+                <tr>
+                    <td>5 products</td>
+                    <td>$15-20</td>
+                </tr>
+                <tr>
+                    <td>20 products</td>
+                    <td>$5-6</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>Single Product (Forge Intent) — Updated</h2>
+            <table>
+                <tr>
+                    <th>Component</th>
+                    <th>Before</th>
+                    <th>After</th>
+                    <th>Delta</th>
+                </tr>
+                <tr>
+                    <td>Product infrastructure</td>
+                    <td>$190-250</td>
+                    <td>$190-250</td>
+                    <td>—</td>
+                </tr>
+                <tr>
+                    <td>Platform share</td>
+                    <td>—</td>
+                    <td>~$75-100</td>
+                    <td>+$75-100</td>
+                </tr>
+                <tr style="font-weight: 600; background: var(--gray-50);">
+                    <td>Total</td>
+                    <td>$190-250</td>
+                    <td>$265-350</td>
+                    <td>+$75-100</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="nav-buttons">
+            <button class="nav-btn secondary" onclick="switchTab('patterns')">← Previous</button>
+            <button class="nav-btn primary" onclick="switchTab('documents')">Next: Document Registry →</button>
+        </div>
+    </div>
+
+    <!-- TAB 7: Document Registry -->
+    <div id="documents" class="tab-content">
+        <div class="card">
+            <h2>NEW Documents</h2>
+            <table>
+                <tr>
+                    <th>File</th>
+                    <th>Purpose</th>
+                    <th>Lines</th>
+                    <th>Status</th>
+                </tr>
+                <tr>
+                    <td><code>00-CONSOLIDATED-Platform-Strategy-Plan.md</code></td>
+                    <td>Master plan: TOM's Scope Expansion + all MODs</td>
+                    <td>~525</td>
+                    <td><span class="status-pill status-draft">DRAFT</span></td>
+                </tr>
+                <tr>
+                    <td><code>12-Platform-Covenants.md</code></td>
+                    <td>4 inviolable platform rules</td>
+                    <td>280</td>
+                    <td><span class="status-pill status-draft">DRAFT</span></td>
+                </tr>
+                <tr>
+                    <td><code>13-Multi-Product-Architecture.md</code></td>
+                    <td>Single-MCP decision + diagrams</td>
+                    <td>390</td>
+                    <td><span class="status-pill status-draft">DRAFT</span></td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>UPDATED Documents</h2>
+            <table>
+                <tr>
+                    <th>File</th>
+                    <th>Change Type</th>
+                    <th>Lines Added</th>
+                    <th>Status</th>
+                </tr>
+                <tr>
+                    <td><code>01-Architecture-Decisions.md</code></td>
+                    <td>Decision 5 added</td>
+                    <td>+60</td>
+                    <td><span class="status-pill status-updated">UPDATED</span></td>
+                </tr>
+                <tr>
+                    <td><code>08-Scale-Requirements.md</code></td>
+                    <td>Platform overhead section</td>
+                    <td>+55</td>
+                    <td><span class="status-pill status-updated">UPDATED</span></td>
+                </tr>
+                <tr>
+                    <td><code>09-Recovery-Roadmap.md</code></td>
+                    <td>Phase A-PLATFORM inserted</td>
+                    <td>+25</td>
+                    <td><span class="status-pill status-updated">UPDATED</span></td>
+                </tr>
+                <tr>
+                    <td><code>10-Code-Divergence-Report.md</code></td>
+                    <td>Sprint 0 Platform added</td>
+                    <td>+20</td>
+                    <td><span class="status-pill status-updated">UPDATED</span></td>
+                </tr>
+                <tr>
+                    <td><code>11-Open-Brain-Adoption-Plan.md</code></td>
+                    <td>v2.0 rewrite (platform scale)</td>
+                    <td>Full rewrite</td>
+                    <td><span class="status-pill status-updated">UPDATED</span></td>
+                </tr>
+                <tr>
+                    <td><code>INDEX.md</code></td>
+                    <td>Tier 4 + status updates</td>
+                    <td>+30</td>
+                    <td><span class="status-pill status-updated">UPDATED</span></td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>UNCHANGED Documents</h2>
+            <table>
+                <tr>
+                    <th>File</th>
+                    <th>Reason</th>
+                </tr>
+                <tr>
+                    <td><code>00-AUTHORITATIVE-Architecture-Summary.md</code></td>
+                    <td>Product-level spec, platform wraps it</td>
+                </tr>
+                <tr>
+                    <td><code>00-AUTHORITATIVE-OpenClaw-Contracts.md</code></td>
+                    <td>Product-specific, not platform concern</td>
+                </tr>
+                <tr>
+                    <td><code>02-Architecture-Overview.md</code></td>
+                    <td>Still valid, platform adds layer above</td>
+                </tr>
+                <tr>
+                    <td><code>03-Four-Phase-Pipeline.md</code></td>
+                    <td>Methodology is domain-specific</td>
+                </tr>
+                <tr>
+                    <td><code>04-Role-Taxonomy.md</code></td>
+                    <td>Per-product role definitions</td>
+                </tr>
+                <tr>
+                    <td><code>05-AX-Axis-Definitions.md</code></td>
+                    <td>Per-product axis definitions</td>
+                </tr>
+                <tr>
+                    <td><code>06-DynamoDB-Schema.md</code></td>
+                    <td>Product state, not platform governance</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="nav-buttons">
+            <button class="nav-btn secondary" onclick="switchTab('cost')">← Previous</button>
+            <button class="nav-btn primary" onclick="switchTab('approval')">Next: Approval Checklist →</button>
+        </div>
+    </div>
+
+    <!-- TAB 8: Approval Checklist -->
+    <div id="approval" class="tab-content">
+        <div class="card">
+            <h2>Documents Requiring Approval</h2>
+            <ul class="checkbox-list">
+                <li><input type="checkbox" id="doc1"><label for="doc1"><code>00-CONSOLIDATED-Platform-Strategy-Plan.md</code> (this document)</label></li>
+                <li><input type="checkbox" id="doc2"><label for="doc2"><code>12-Platform-Covenants.md</code></label></li>
+                <li><input type="checkbox" id="doc3"><label for="doc3"><code>13-Multi-Product-Architecture.md</code></label></li>
+                <li><input type="checkbox" id="doc4"><label for="doc4"><code>01-Architecture-Decisions.md</code> (Decision 5 addition)</label></li>
+                <li><input type="checkbox" id="doc5"><label for="doc5"><code>08-Scale-Requirements.md</code> (Platform Overhead section)</label></li>
+                <li><input type="checkbox" id="doc6"><label for="doc6"><code>09-Recovery-Roadmap.md</code> (Phase A-PLATFORM insertion)</label></li>
+                <li><input type="checkbox" id="doc7"><label for="doc7"><code>10-Code-Divergence-Report.md</code> (Sprint 0 addition)</label></li>
+                <li><input type="checkbox" id="doc8"><label for="doc8"><code>11-Open-Brain-Adoption-Plan.md</code> (v2.0 rewrite)</label></li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>Decisions Requiring Confirmation</h2>
+            <ul class="checkbox-list">
+                <li><input type="checkbox" id="dec1"><label for="dec1">Single shared Context MCP (vs 20 separate)</label></li>
+                <li><input type="checkbox" id="dec2"><label for="dec2">PostgreSQL RDS size: db.t3.micro recommended</label></li>
+                <li><input type="checkbox" id="dec3"><label for="dec3">HTTP API Gateway endpoint: <code>context-api.arcfoundry.ai</code></label></li>
+                <li><input type="checkbox" id="dec4"><label for="dec4">Platform overhead budget: $75-100/mo</label></li>
+                <li><input type="checkbox" id="dec5"><label for="dec5">Phase A-PLATFORM must complete before Product #2</label></li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>Next Steps After Approval</h2>
+            <ol style="padding-left: 1.5rem; color: var(--gray-700);">
+                <li style="margin-bottom: 0.5rem;"><strong>Sync to local repo:</strong> Run <code>.claude/sync-curated-content.sh</code></li>
+                <li style="margin-bottom: 0.5rem;"><strong>Begin Sprint 0:</strong> Deploy PostgreSQL, implement ADC Gateway</li>
+                <li style="margin-bottom: 0.5rem;"><strong>Register Forge Intent ADC:</strong> First product on platform</li>
+                <li style="margin-bottom: 0.5rem;"><strong>Validate:</strong> Forge Intent calls through ADC Gateway successfully</li>
+            </ol>
+        </div>
+
+        <div class="card">
+            <h2>Source Documents</h2>
+            <table>
+                <tr>
+                    <th>Document</th>
+                    <th>Location</th>
+                </tr>
+                <tr>
+                    <td>Strategic Plan</td>
+                    <td>This conversation (TOM's Scope Expansion MAR 13)</td>
+                </tr>
+                <tr>
+                    <td>Platform Research</td>
+                    <td><code>PLATFORM-MCP-RESEARCH.md</code> (30-day ecosystem scan)</td>
+                </tr>
+                <tr>
+                    <td>Architecture Analysis</td>
+                    <td><code>CONTEXT-MCP-PLATFORM-ANALYSIS.md</code> (multi-domain analysis)</td>
+                </tr>
+                <tr>
+                    <td>Authoritative Specs</td>
+                    <td><code>docs/curated/00-AUTHORITATIVE-*.md</code></td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="nav-buttons">
+            <button class="nav-btn secondary" onclick="switchTab('documents')">← Previous</button>
+            <button class="nav-btn primary" onclick="switchTab('overview')">Return to Overview →</button>
+        </div>
+    </div>
+
+    <button class="print-btn" onclick="window.print()">🖨️ Print All Tabs</button>
+
+    <script>
+        function switchTab(tabId) {
+            // Remove active from all tabs and content
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            // Add active to selected
+            document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+
+            // Scroll to top
+            window.scrollTo(0, 0);
+        }
+
+        // Tab click handlers
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+        });
+
+        // Save checkbox state to localStorage
+        document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            const saved = localStorage.getItem(cb.id);
+            if (saved === 'true') cb.checked = true;
+
+            cb.addEventListener('change', () => {
+                localStorage.setItem(cb.id, cb.checked);
+            });
+        });
+    </script>
+</body>
+</html>
